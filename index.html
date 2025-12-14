@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>System 6 - CELL.LIFE</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
+    
+    <style>
+        /* --- System 6 Theme Styles --- */
+        :root {
+            --sys-black: #000;
+            --sys-white: #fff;
+            --sys-grey: #aaa; 
+            --shadow: 2px 2px 0px var(--sys-black);
+        }
+
+        body {
+            font-family: 'VT323', monospace;
+            background-color: #f0f0f0;
+            /* Retro background pattern */
+            background-image: linear-gradient(45deg, #ccc 25%, transparent 25%), 
+                              linear-gradient(-45deg, #ccc 25%, transparent 25%), 
+                              linear-gradient(45deg, transparent 75%, #ccc 75%), 
+                              linear-gradient(-45deg, transparent 75%, #ccc 75%);
+            background-size: 4px 4px;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            min-height: 100vh;
+            color: var(--sys-black);
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        /* The Main Window */
+        .window {
+            background: var(--sys-white);
+            border: 2px solid var(--sys-black);
+            box-shadow: 4px 4px 0px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 500px;
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 20px;
+        }
+
+        /* Title Bar */
+        .title-bar {
+            background: var(--sys-black);
+            color: var(--sys-white);
+            padding: 4px 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid var(--sys-black);
+            font-size: 1.2rem;
+            letter-spacing: 1px;
+        }
+        
+        .title-lines {
+            flex-grow: 1;
+            height: 12px;
+            margin: 0 10px;
+            background: repeating-linear-gradient(
+                to bottom,
+                var(--sys-white),
+                var(--sys-white) 1px,
+                var(--sys-black) 1px,
+                var(--sys-black) 2px
+            );
+        }
+
+        .close-box {
+            width: 12px;
+            height: 12px;
+            background: var(--sys-white);
+            border: 1px solid var(--sys-white);
+            box-shadow: inset 1px 1px 0 #000;
+        }
+
+        /* Main Content Area */
+        .content {
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        /* Toolbar / Control Groups */
+        .toolbar {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+            justify-content: space-around;
+            padding-bottom: 5px;
+            border-bottom: 1px dashed var(--sys-black);
+        }
+
+        .btn {
+            background: var(--sys-white);
+            border: 2px solid var(--sys-black);
+            padding: 5px 10px;
+            font-family: 'VT323', monospace;
+            font-size: 1rem;
+            cursor: pointer;
+            box-shadow: 2px 2px 0px var(--sys-black);
+            transition: transform 0.1s;
+            text-transform: uppercase;
+            text-decoration: none;
+            color: var(--sys-black);
+            display: inline-block;
+            text-align: center;
+        }
+
+        .btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: none;
+            background: var(--sys-black);
+            color: var(--sys-white);
+        }
+
+        .btn.active {
+            background: var(--sys-black);
+            color: var(--sys-white);
+            box-shadow: inset 2px 2px 0px rgba(255,255,255,0.2);
+        }
+
+        .btn:disabled {
+            color: #aaa;
+            border-color: #aaa;
+            box-shadow: none;
+            cursor: default;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 5px;
+            align-items: center;
+            border: 1px solid var(--sys-black);
+            padding: 3px;
+            flex-wrap: wrap; 
+            justify-content: center;
+        }
+
+        .control-group-title {
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        /* Canvas Area */
+        .canvas-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: #e0e0e0;
+            padding: 10px;
+            border: 1px inset var(--sys-black);
+        }
+
+        canvas {
+            background: var(--sys-white);
+            border: 2px solid var(--sys-black);
+            cursor: crosshair;
+            image-rendering: pixelated;
+            box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+            
+            /* Responsive resizing */
+            width: 100%;
+            height: auto;
+            max-width: 320px; /* Limit max size */
+            aspect-ratio: 1 / 1; 
+            touch-action: none; /* Prevents scrolling when interacting with the grid */
+        }
+
+        /* Simulation Controls */
+        .simulation-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 5px 0;
+            flex-wrap: wrap;
+        }
+
+        label {
+            font-size: 1.1rem;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            background: transparent;
+            width: 100px;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px;
+            width: 16px;
+            background: var(--sys-black);
+            cursor: pointer;
+            margin-top: -6px;
+        }
+        input[type="range"]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            background: var(--sys-black);
+        }
+
+        /* Info Panel */
+        .info-panel {
+            font-size: 1rem;
+            text-align: center;
+            padding: 5px 0 0;
+            border-top: 1px dashed var(--sys-black);
+        }
+
+        /* Responsive */
+        @media (max-width: 500px) {
+            body { padding: 5px; }
+            .btn { font-size: 0.9rem; padding: 4px 6px; }
+            .control-group { flex-wrap: wrap; justify-content: center;}
+            .simulation-controls { justify-content: center; gap: 10px;}
+        }
+    </style>
+</head>
+<body>
+
+<div class="window">
+    <div class="title-bar">
+        <div class="close-box"></div>
+        <div class="title-lines"></div>
+        <span>CELL.LIFE</span>
+        <div class="title-lines"></div>
+    </div>
+
+    <div class="content">
+        <!-- Setup Controls -->
+        <div class="toolbar">
+            <div class="control-group">
+                <span class="control-group-title">SETUP:</span>
+                <button class="btn active" id="tool-pen" onclick="setTool('pen')" title="Toggle Cell State">Toggle</button>
+                <button class="btn" onclick="clearGrid()">Clear All</button>
+                <button class="btn" onclick="randomizeGrid()">Random</button>
+            </div>
+            
+            <div class="control-group">
+                <span class="control-group-title">GRID:</span>
+                <select id="grid-size" class="btn" onchange="changeGridSize()">
+                    <option value="16">16x16</option>
+                    <option value="32">32x32</option>
+                    <option value="64">64x64</option>
+                </select>
+                <button class="btn" onclick="resetSimulation()" style="color:red; font-weight:bold;">RESET</button>
+            </div>
+        </div>
+
+        <!-- Main Canvas -->
+        <div class="canvas-container">
+            <canvas id="editorCanvas" width="320" height="320"></canvas>
+        </div>
+
+        <!-- Simulation Controls -->
+        <div class="simulation-controls">
+            <button class="btn" id="play-btn" onclick="toggleSimulation()">&#9658; START</button>
+            <button class="btn" id="step-btn" onclick="stepSimulation()">STEP</button>
+            <div style="display:flex; align-items:center; gap:5px;">
+                <label>Speed:</label>
+                <!-- Range is 1 (Slow) to 20 (Fast) -->
+                <input type="range" id="speed-range" min="1" max="20" value="8" oninput="updateSpeed()">
+            </div>
+        </div>
+
+        <!-- Info Panel / Future Achievement Display -->
+        <div class="info-panel">
+            Generation: <span id="generation-indicator">0</span> | Population: <span id="population-indicator">0</span>
+        </div>
+    </div>
+</div>
+
+<script>
+    // --- Configuration ---
+    let gridSize = 16;
+    const canvasSize = 320; 
+    let pixelSize = canvasSize / gridSize;
+    
+    // --- State ---
+    let grid = []; // 2D array: 0=dead, 1=alive
+    let generation = 0;
+    let population = 0;
+    
+    let isRunning = false;
+    let runInterval = null;
+    let fps = 8; // Frames (Generations) per second
+    let isDrawing = false; // For mouse/touch interaction
+
+    // --- DOM Elements ---
+    const canvas = document.getElementById('editorCanvas');
+    const ctx = canvas.getContext('2d');
+    const playBtn = document.getElementById('play-btn');
+    const stepBtn = document.getElementById('step-btn');
+    const genIndicator = document.getElementById('generation-indicator');
+    const popIndicator = document.getElementById('population-indicator');
+    
+    // --- Initialization ---
+    function init() {
+        // Ensure grid settings match current dropdown (default 16x16)
+        const select = document.getElementById('grid-size');
+        gridSize = parseInt(select.value);
+        pixelSize = canvasSize / gridSize;
+
+        grid = createNewGrid(gridSize);
+        render();
+        updateUI();
+    }
+
+    // --- Grid Logic ---
+
+    /** * Creates and returns a new empty grid (all dead cells) of a specified size. 
+     * This function is now pure and does NOT touch the global 'grid' variable.
+     */
+    function createNewGrid(size) {
+        const newGrid = [];
+        for (let y = 0; y < size; y++) {
+            let row = [];
+            for (let x = 0; x < size; x++) {
+                row.push(0);
+            }
+            newGrid.push(row);
+        }
+        return newGrid;
+    }
+
+    /** Resets the simulation to a clean state. */
+    function resetSimulation() {
+        if (isRunning) stopSimulation();
+        grid = createNewGrid(gridSize);
+        generation = 0;
+        population = 0;
+        render();
+        updateUI();
+    }
+
+    /** Clears the grid (same as reset, but without stopping simulation if already stopped). */
+    function clearGrid() {
+        grid = createNewGrid(gridSize);
+        generation = 0;
+        population = 0;
+        render();
+        updateUI();
+    }
+
+    /** Fills the grid with random living/dead cells. */
+    function randomizeGrid() {
+        if (isRunning) stopSimulation();
+        const newGrid = [];
+        for (let y = 0; y < gridSize; y++) {
+            let row = [];
+            for (let x = 0; x < gridSize; x++) {
+                // 30% chance of being alive
+                row.push(Math.random() < 0.3 ? 1 : 0);
+            }
+            newGrid.push(row);
+        }
+        grid = newGrid;
+        generation = 0;
+        updatePopulation(); // Recalculate population after randomization
+        render();
+        updateUI();
+    }
+
+    /** Changes grid size and resets the simulation completely. */
+    function changeGridSize() {
+        const select = document.getElementById('grid-size');
+        const newSize = parseInt(select.value);
+        
+        // Use a non-disruptive way to ask for confirmation
+        if (population > 0 || generation > 0) {
+            if(!confirm("Changing grid size will reset the current pattern and generation count. Continue?")) {
+                select.value = gridSize; // Revert selection
+                return;
+            }
+        }
+        
+        gridSize = newSize;
+        pixelSize = canvasSize / gridSize;
+        resetSimulation();
+    }
+
+    // --- Conway's Game of Life Core Logic ---
+    
+    /** Calculates the next state of the grid based on Conway's rules. */
+    function applyConwayRules() {
+        // FIX: nextGrid must be created using createNewGrid, NOT the original broken createEmptyGrid
+        const nextGrid = createNewGrid(gridSize); 
+        let liveCount = 0;
+
+        for (let y = 0; y < gridSize; y++) {
+            for (let x = 0; x < gridSize; x++) {
+                const state = grid[y][x];
+                const neighbors = countNeighbors(x, y);
+
+                // --- Conway's Rules ---
+                
+                // Rule 1: Underpopulation
+                if (state === 1 && neighbors < 2) {
+                    nextGrid[y][x] = 0; // Dies
+                } 
+                // Rule 2 & 3: Survival
+                else if (state === 1 && (neighbors === 2 || neighbors === 3)) {
+                    nextGrid[y][x] = 1; // Survives
+                }
+                // Rule 4: Overpopulation
+                else if (state === 1 && neighbors > 3) {
+                    nextGrid[y][x] = 0; // Dies
+                }
+                // Rule 5: Reproduction
+                else if (state === 0 && neighbors === 3) {
+                    nextGrid[y][x] = 1; // Becomes alive
+                } 
+                // Default: Stays the same (dead stays dead unless 3 neighbors)
+                else {
+                    nextGrid[y][x] = state;
+                }
+
+                if (nextGrid[y][x] === 1) {
+                    liveCount++;
+                }
+            }
+        }
+
+        // Check for stability (future feature for "goals")
+        // const isStable = JSON.stringify(grid) === JSON.stringify(nextGrid);
+        
+        grid = nextGrid;
+        population = liveCount;
+        generation++;
+        
+        // Optional: If stable, stop simulation (for educational focus)
+        // if (isRunning && isStable && generation > 1) { 
+        //    stopSimulation();
+        //    console.log("System reached a stable state!");
+        // }
+    }
+
+    /** Counts the number of live neighbors for a cell (x, y). */
+    function countNeighbors(x, y) {
+        let count = 0;
+        
+        // Check all 8 surrounding cells
+        for (let dy = -1; dy <= 1; dy++) {
+            for (let dx = -1; dx <= 1; dx++) {
+                if (dx === 0 && dy === 0) continue; // Skip the cell itself
+
+                // Calculate neighbor coordinates (toroidal/wrapping edges)
+                const nx = (x + dx + gridSize) % gridSize;
+                const ny = (y + dy + gridSize) % gridSize;
+                
+                // Check if the neighbor is alive (1)
+                count += grid[ny][nx];
+            }
+        }
+        return count;
+    }
+
+    // --- Drawing Engine ---
+
+    /** Draws the grid lines on the canvas. */
+    function drawGridLines() {
+        ctx.strokeStyle = '#e0e0e0';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        for (let i = 0; i <= gridSize; i++) {
+            ctx.moveTo(i * pixelSize, 0);
+            ctx.lineTo(i * pixelSize, canvasSize);
+            ctx.moveTo(0, i * pixelSize);
+            ctx.lineTo(canvasSize, i * pixelSize);
+        }
+        ctx.stroke();
+    }
+
+    /** Draws a single cell. */
+    function drawPixel(x, y, color) {
+        ctx.fillStyle = color;
+        const gap = 0; 
+        ctx.fillRect(x * pixelSize + gap, y * pixelSize + gap, pixelSize - gap*2, pixelSize - gap*2);
+    }
+
+    /** Renders the entire grid state to the canvas. */
+    function render() {
+        ctx.clearRect(0, 0, canvasSize, canvasSize);
+        drawGridLines();
+
+        for (let y = 0; y < gridSize; y++) {
+            for (let x = 0; x < gridSize; x++) {
+                if (grid[y][x] === 1) {
+                    drawPixel(x, y, '#000'); // Alive cell is Black
+                }
+                // Dead cells (0) are just the background color, no need to draw
+            }
+        }
+    }
+
+    // --- Interaction ---
+
+    /** Sets the tool (currently only 'pen' for toggling). */
+    function setTool(t) {
+        // In Game of Life, the tool just toggles the state, so this is mostly aesthetic
+        document.getElementById('tool-pen').classList.add('active');
+        canvas.style.cursor = 'crosshair';
+    }
+
+    /** Converts mouse/touch coordinates to grid coordinates. */
+    function getGridCoords(e) {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+        const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+        
+        // Use rect.width/height for responsive calculation
+        const x = Math.floor((clientX - rect.left) / (rect.width / gridSize));
+        const y = Math.floor((clientY - rect.top) / (rect.height / gridSize));
+        return { x, y };
+    }
+
+    /** Toggles the state of a cell on mouse/touch interaction. */
+    function handleToggle(e) {
+        if (isRunning) return; // Cannot edit while running
+        
+        const { x, y } = getGridCoords(e);
+        if (x >= 0 && x < gridSize && y >= 0 && y < gridSize) {
+            // Toggles the state: 1 -> 0, or 0 -> 1
+            const newState = 1 - grid[y][x]; 
+            if (grid[y][x] !== newState) {
+                grid[y][x] = newState;
+                render();
+                // Recalculate population immediately after setup change
+                updatePopulation();
+                updateUI();
+            }
+        }
+        // Critical for touch devices: prevent default scrolling/zooming
+        if (e.cancelable) e.preventDefault();
+    }
+
+    // Interaction Listeners (Only on 'mousedown' or 'touchstart' for clean toggling)
+    canvas.addEventListener('mousedown', (e) => { 
+        if (!isRunning) handleToggle(e); 
+        isDrawing = true; 
+    });
+    // Optional: Allow drag-painting if desired (uncomment next line)
+    // canvas.addEventListener('mousemove', (e) => { if (isDrawing && !isRunning) handleToggle(e); });
+    window.addEventListener('mouseup', () => { isDrawing = false; });
+    
+    canvas.addEventListener('touchstart', (e) => { 
+        if (!isRunning) handleToggle(e); 
+        isDrawing = true; 
+    }, {passive: false});
+    // Optional: Allow drag-painting if desired (uncomment next line)
+    // canvas.addEventListener('touchmove', (e) => { if (isDrawing && !isRunning) handleToggle(e); }, {passive: false});
+    canvas.addEventListener('touchend', () => { isDrawing = false; });
+
+
+    // --- Simulation Controls ---
+
+    /** Toggles the continuous simulation loop. */
+    function toggleSimulation() {
+        if (isRunning) stopSimulation();
+        else startSimulation();
+    }
+
+    /** Starts the continuous simulation loop. */
+    function startSimulation() {
+        if (population === 0 && generation === 0) {
+            // If starting from a clear board, prompt for a pattern
+            if (gridSize > 0 && !confirm("The grid is empty! Start with a random pattern?")) {
+                return;
+            }
+            randomizeGrid();
+        }
+
+        isRunning = true;
+        playBtn.innerHTML = '&#9632; STOP';
+        stepBtn.disabled = true;
+        canvas.style.cursor = 'default';
+        document.getElementById('grid-size').disabled = true;
+
+        // Run the simulation loop
+        runInterval = setInterval(() => {
+            stepSimulation();
+        }, 1000 / fps);
+    }
+
+    /** Stops the continuous simulation loop. */
+    function stopSimulation() {
+        isRunning = false;
+        clearInterval(runInterval);
+        playBtn.innerHTML = '&#9658; START';
+        stepBtn.disabled = false;
+        canvas.style.cursor = 'crosshair';
+        document.getElementById('grid-size').disabled = false;
+    }
+
+    /** Executes one generation step. */
+    function stepSimulation() {
+        applyConwayRules();
+        render();
+        updateUI();
+    }
+
+    /** Updates the FPS based on the slider, and restarts interval if running. */
+    function updateSpeed() {
+        const slider = document.getElementById('speed-range');
+        fps = parseInt(slider.value);
+        if (isRunning) {
+            stopSimulation();
+            startSimulation(); // Restart with new speed
+        }
+    }
+
+    /** Recalculates the current population count. */
+    function updatePopulation() {
+        let count = 0;
+        for (let y = 0; y < gridSize; y++) {
+            for (let x = 0; x < gridSize; x++) {
+                if (grid[y][x] === 1) count++;
+            }
+        }
+        population = count;
+    }
+
+    // --- UI Update ---
+
+    /** Updates the generation and population displays. */
+    function updateUI() {
+        genIndicator.innerText = generation;
+        popIndicator.innerText = population;
+
+        // Enable/Disable step button based on running state
+        stepBtn.disabled = isRunning;
+    }
+
+    // --- Start ---
+    window.onload = function() {
+        init();
+        setTool('pen'); // Ensure the toggle tool is selected initially
+    }
+</script>
+
+</body>
+</html>
