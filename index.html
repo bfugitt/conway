@@ -16,6 +16,9 @@
             --sys-white: #fff;
             --sys-grey: #aaa; 
             --shadow: 2px 2px 0px var(--sys-black);
+            --cell-alive: #000;
+            --cell-dead: #fff;
+            --cell-border: #999;
         }
 
         body {
@@ -224,7 +227,7 @@
             border-top: 1px dashed var(--sys-black);
         }
         
-        /* Retro Modal Styles */
+        /* Retro Modal Styles (Shared for HALT and HELP) */
         .retro-modal-overlay {
             position: fixed;
             top: 0;
@@ -242,17 +245,19 @@
             background: var(--sys-white);
             border: 2px solid var(--sys-black);
             box-shadow: 6px 6px 0px rgba(0,0,0,0.5);
-            width: 90%;
-            max-width: 350px;
+            width: 95%;
+            max-width: 400px;
             display: flex;
             flex-direction: column;
+            max-height: 90vh;
+            overflow-y: auto;
         }
 
         .modal-content {
             padding: 15px;
             display: flex;
             flex-direction: column;
-            gap: 8px;
+            gap: 12px;
             align-items: center;
             text-align: center;
         }
@@ -261,13 +266,52 @@
             font-size: 1.1rem;
             font-weight: bold;
             color: #d90429; /* A retro red for warnings */
-            margin-bottom: 15px;
             padding: 5px;
             border: 1px dashed var(--sys-black);
             width: 100%;
             box-sizing: border-box;
+            text-align: left;
         }
 
+        /* Help Modal Specific Styling */
+        .rule-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 5px;
+            margin-bottom: 15px;
+            padding: 10px;
+            border: 1px solid var(--sys-grey);
+            width: 100%;
+            box-sizing: border-box;
+            background: #eee;
+        }
+
+        .rule-visual {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: repeat(3, 1fr);
+            gap: 1px;
+            width: 60px;
+            height: 60px;
+            border: 1px solid var(--sys-black);
+            margin-bottom: 5px;
+        }
+
+        .cell {
+            border: 1px solid var(--cell-border);
+            box-sizing: border-box;
+        }
+
+        .alive { background-color: var(--cell-alive); }
+        .dead { background-color: var(--cell-dead); }
+        .center-cell { 
+            grid-column: 2; 
+            grid-row: 2; 
+            border: 2px solid #ff0000; /* Red border for emphasis */
+        }
+        .center-cell.alive { background-color: #008800; } /* Green for target cell */
+        .center-cell.dead { background-color: #880000; } /* Red outline for target cell */
 
         /* Responsive */
         @media (max-width: 500px) {
@@ -282,7 +326,7 @@
 
 <div class="window">
     <div class="title-bar">
-        <div class="close-box" onclick="closeModal()"></div>
+        <div class="close-box" onclick="closeModal('halt')"></div>
         <div class="title-lines"></div>
         <span>CELL.LIFE</span>
         <div class="title-lines"></div>
@@ -293,18 +337,18 @@
         <div class="toolbar">
             <div class="control-group">
                 <span class="control-group-title">SETUP:</span>
-                <!-- Removed redundant Toggle button -->
                 <button class="btn" onclick="clearGrid()">Clear All</button>
                 <button class="btn" onclick="randomizeGrid()">Random</button>
             </div>
             
             <div class="control-group">
-                <span class="control-group-title">GRID:</span>
+                <span class="control-group-title">GRID & HELP:</span>
                 <select id="grid-size" class="btn" onchange="changeGridSize()">
                     <option value="16">16x16</option>
                     <option value="32">32x32</option>
                     <option value="64">64x64</option>
                 </select>
+                <button class="btn" onclick="showHelpModal()">[?] HELP</button>
                 <button class="btn" onclick="resetSimulation()" style="color:red; font-weight:bold;">RESET</button>
             </div>
         </div>
@@ -337,20 +381,45 @@
 </div>
 
 <!-- Modal HTML structure for halting messages -->
-<div id="retroModal" class="retro-modal-overlay" style="display: none;">
+<div id="haltModal" class="retro-modal-overlay" style="display: none;">
     <div class="retro-modal-window">
         <div class="title-bar">
-            <div class="close-box" onclick="closeModal()"></div>
+            <div class="close-box" onclick="closeModal('halt')"></div>
             <div class="title-lines"></div>
-            <span>SIMULATION Halted</span>
+            <span>SIMULATION HALTED</span>
             <div class="title-lines"></div>
         </div>
         <div class="modal-content">
-            <p style="font-size: 1.2rem; margin-bottom: 10px;">SYSTEM MESSAGE:</p>
-            <div id="modal-reason" class="modal-text"></div>
-            <p>Generation: <span id="modal-generation">0</span></p>
-            <p>Population: <span id="modal-population">0</span></p>
-            <button class="btn" onclick="closeModal()">OKAY</button>
+            <p style="font-size: 1.2rem; margin-bottom: 10px;">SYSTEM ALERT:</p>
+            <div id="modal-halt-reason" class="modal-text"></div>
+            <p>Generation: <span id="modal-halt-generation">0</span></p>
+            <p>Population: <span id="modal-halt-population">0</span></p>
+            <button class="btn" onclick="closeModal('halt')">OKAY</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal HTML structure for Help/Rules -->
+<div id="helpModal" class="retro-modal-overlay" style="display: none;">
+    <div class="retro-modal-window">
+        <div class="title-bar">
+            <div class="close-box" onclick="closeModal('help')"></div>
+            <div class="title-lines"></div>
+            <span>CELL.LIFE - RULES GUIDE</span>
+            <div class="title-lines"></div>
+        </div>
+        <div class="modal-content">
+            <p style="font-size: 1.2rem; margin-bottom: 5px;">HOW THE GAME WORKS</p>
+            <p style="text-align: left; font-size: 0.9rem;">
+                This game uses simple rules to create complex patterns. You set up the first pattern by clicking on the grid to make cells ALIVE (black). When you press START, every cell changes based on its 8 neighbors (the cells touching it).
+            </p>
+            
+            <p style="font-size: 1.2rem; margin-top: 10px; margin-bottom: 5px;">THE FOUR SIMPLE RULES</p>
+
+            <!-- Rules will be injected here by JavaScript -->
+            <div id="rules-container" style="width: 100%;"></div>
+
+            <button class="btn" onclick="closeModal('help')">I GOT IT</button>
         </div>
     </div>
 </div>
@@ -382,10 +451,16 @@
     const stepBackBtn = document.getElementById('step-back-btn');
     const genIndicator = document.getElementById('generation-indicator');
     const popIndicator = document.getElementById('population-indicator');
-    const retroModal = document.getElementById('retroModal');
-    const modalReason = document.getElementById('modal-reason');
-    const modalGen = document.getElementById('modal-generation');
-    const modalPop = document.getElementById('modal-population');
+    
+    // Halting Modal Elements
+    const haltModal = document.getElementById('haltModal');
+    const modalHaltReason = document.getElementById('modal-halt-reason');
+    const modalHaltGen = document.getElementById('modal-halt-generation');
+    const modalHaltPop = document.getElementById('modal-halt-population');
+
+    // Help Modal Elements
+    const helpModal = document.getElementById('helpModal');
+    const rulesContainer = document.getElementById('rules-container');
     
     // --- Initialization ---
     function init() {
@@ -398,13 +473,12 @@
         gridHistory = []; // Ensure history is empty on init
         render();
         updateUI();
+        injectRuleVisuals(); // Pre-generate rule visuals
     }
 
     // --- Grid Logic ---
 
-    /** * Creates and returns a new empty grid (all dead cells) of a specified size. 
-     * This function is now pure and does NOT touch the global 'grid' variable.
-     */
+    /** * Creates and returns a new empty grid (all dead cells) of a specified size. */
     function createNewGrid(size) {
         const newGrid = [];
         for (let y = 0; y < size; y++) {
@@ -463,10 +537,8 @@
         const select = document.getElementById('grid-size');
         const newSize = parseInt(select.value);
         
-        // Use a non-disruptive way to ask for confirmation
         if (population > 0 || generation > 0) {
-            // NOTE: Using confirm temporarily as per previous examples, 
-            // but will replace with a custom modal if requested.
+            // Replaced alert with custom function
             if(!confirm("Changing grid size will reset the current pattern and generation count. Continue?")) {
                 select.value = gridSize; // Revert selection
                 return;
@@ -484,16 +556,14 @@
     function countNeighborsForGrid(x, y, targetGrid) {
         let count = 0;
         
-        // Check all 8 surrounding cells
         for (let dy = -1; dy <= 1; dy++) {
             for (let dx = -1; dx <= 1; dx++) {
-                if (dx === 0 && dy === 0) continue; // Skip the cell itself
+                if (dx === 0 && dy === 0) continue; 
 
-                // Calculate neighbor coordinates (toroidal/wrapping edges)
+                // Toroidal/wrapping edges
                 const nx = (x + dx + gridSize) % gridSize;
                 const ny = (y + dy + gridSize) % gridSize;
                 
-                // Check if the neighbor is alive (1)
                 count += targetGrid[ny][nx];
             }
         }
@@ -510,9 +580,6 @@
                 const neighbors = countNeighborsForGrid(x, y, inputGrid);
                 const state = inputGrid[y][x];
 
-                // --- Conway's Rules (Combined logic) ---
-                // State 1 (Alive): Survives if 2 or 3 neighbors. Dies otherwise.
-                // State 0 (Dead): Becomes alive if 3 neighbors. Stays dead otherwise.
                 const isAlive = state === 1;
                 let newState = 0;
 
@@ -537,29 +604,27 @@
         const totalCells = gridSize * gridSize;
         let reason = null;
 
-        // 3. Extinction/Overgrowth
+        // 3. Extinction/Overgrowth (Kid-friendly language)
         if (liveCount === 0) {
-            reason = "EXTINCTION: All cells are dead. Life faded away.";
+            reason = "EMPTY! All the cells died. No life left on the grid.";
         } else if (liveCount === totalCells) {
-            reason = "OVERGROWTH: Grid is completely filled. Maximum density reached.";
+            reason = "FULL HOUSE! The entire grid is full of living cells.";
         }
         
-        // Convert to string for easy comparison (Grid is an array of arrays)
         const currentGridString = JSON.stringify(currentGrid);
         const nextGridString = JSON.stringify(nextGrid);
         
-        // 1. Stability (Current grid equals Next grid)
+        // 1. Stability (Current grid equals Next grid - Kid-friendly language)
         if (!reason && currentGridString === nextGridString) {
-            reason = "STABILITY: Pattern reached equilibrium (no visible movement).";
+            reason = "STABLE! The pattern is perfectly still and won't change.";
         }
         
-        // 2. Oscillation (Next grid equals a recent previous grid in history)
+        // 2. Oscillation (Next grid equals a recent previous grid in history - Kid-friendly language)
         if (!reason) {
             for (let i = 0; i < gridHistory.length; i++) {
                 if (nextGridString === JSON.stringify(gridHistory[i])) {
-                    // gridHistory[i] is the state at Generation (current_gen - gridHistory.length + i)
-                    const matchedGen = generation - gridHistory.length + i;
-                    reason = `OSCILLATION: Pattern entered a loop (detected state matching Generation ${matchedGen}).`;
+                    const matchedGen = generation - gridHistory.length + i + 1;
+                    reason = `LOOP DETECTED! The pattern is repeating in a circle (State matches Generation ${matchedGen}).`;
                     break;
                 }
             }
@@ -602,14 +667,11 @@
                 if (grid[y][x] === 1) {
                     drawPixel(x, y, '#000'); // Alive cell is Black
                 }
-                // Dead cells (0) are just the background color, no need to draw
             }
         }
     }
 
     // --- Interaction ---
-
-    // The setTool function is removed as it's no longer necessary.
 
     /** Converts mouse/touch coordinates to grid coordinates. */
     function getGridCoords(e) {
@@ -617,7 +679,6 @@
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
         
-        // Use rect.width/height for responsive calculation
         const x = Math.floor((clientX - rect.left) / (rect.width / gridSize));
         const y = Math.floor((clientY - rect.top) / (rect.height / gridSize));
         return { x, y };
@@ -629,26 +690,23 @@
         
         const { x, y } = getGridCoords(e);
         if (x >= 0 && x < gridSize && y >= 0 && y < gridSize) {
-            // Toggles the state: 1 -> 0, or 0 -> 1
             const newState = 1 - grid[y][x]; 
             if (grid[y][x] !== newState) {
                 // Save current state before toggle for the first step back
                 if (generation === 0 && gridHistory.length === 0) {
-                     gridHistory.push(grid.map(row => [...row])); // Save initial state
+                     gridHistory.push(grid.map(row => [...row])); // Save initial state (Gen 0)
                 }
 
                 grid[y][x] = newState;
                 render();
-                // Recalculate population immediately after setup change
                 updatePopulation();
                 updateUI();
             }
         }
-        // Critical for touch devices: prevent default scrolling/zooming
         if (e.cancelable) e.preventDefault();
     }
 
-    // Interaction Listeners (Only on 'mousedown' or 'touchstart' for clean toggling)
+    // Interaction Listeners 
     canvas.addEventListener('mousedown', (e) => { 
         if (!isRunning) handleToggle(e); 
         isDrawing = true; 
@@ -662,17 +720,113 @@
     canvas.addEventListener('touchend', () => { isDrawing = false; });
 
 
-    // --- Modal Functions ---
+    // --- Modal Functions (Shared) ---
 
-    function showModal(reason) {
-        modalReason.innerText = reason;
-        modalGen.innerText = generation;
-        modalPop.innerText = population;
-        retroModal.style.display = 'flex';
+    function showHaltModal(reason) {
+        modalHaltReason.innerText = reason;
+        modalHaltGen.innerText = generation;
+        modalHaltPop.innerText = population;
+        haltModal.style.display = 'flex';
     }
 
-    function closeModal() {
-        retroModal.style.display = 'none';
+    function showHelpModal() {
+        helpModal.style.display = 'flex';
+    }
+    
+    function closeModal(type) {
+        if (type === 'halt') {
+            haltModal.style.display = 'none';
+        } else if (type === 'help') {
+            helpModal.style.display = 'none';
+        }
+    }
+
+    // --- Help Modal Rule Visuals ---
+
+    /** Generates the HTML for a single rule visual grid.
+     * @param {Array<number>} neighborPattern - 8 items representing neighbors (0 or 1). Top-left clockwise.
+     * @param {number} centerState - 0 (Dead) or 1 (Alive).
+     * @param {string} ruleTitle - Title of the rule.
+     * @param {string} ruleText - Kid-friendly explanation.
+     * @param {string} resultText - The result of the rule.
+     */
+    function createRuleVisual(neighborPattern, centerState, ruleTitle, ruleText, resultText) {
+        const pattern = [
+            neighborPattern[0], neighborPattern[1], neighborPattern[2],
+            neighborPattern[7], centerState, neighborPattern[3],
+            neighborPattern[6], neighborPattern[5], neighborPattern[4]
+        ];
+
+        let html = `
+        <div class="rule-section">
+            <span style="font-weight: bold; font-size: 1.1rem;">${ruleTitle}</span>
+            <div style="display: flex; gap: 15px; align-items: center;">
+                <div class="rule-visual">
+        `;
+
+        for (let i = 0; i < 9; i++) {
+            const state = pattern[i];
+            const isCenter = i === 4;
+            const stateClass = state === 1 ? 'alive' : 'dead';
+            const centerClass = isCenter ? 'center-cell' : '';
+            html += `<div class="cell ${stateClass} ${centerClass}"></div>`;
+        }
+
+        html += `
+                </div>
+                <div style="text-align: left; font-size: 0.9rem; max-width: 250px;">
+                    <p style="margin: 0;">${ruleText}</p>
+                    <p style="margin: 5px 0 0; color: #008800; font-weight: bold;">RESULT: ${resultText}</p>
+                </div>
+            </div>
+        </div>
+        `;
+        return html;
+    }
+
+    function injectRuleVisuals() {
+        // Clear old content
+        rulesContainer.innerHTML = '';
+        
+        let visualsHtml = '';
+        
+        // Rule 1: Underpopulation (Loneliness) - 1 neighbor
+        visualsHtml += createRuleVisual(
+            [0, 0, 0, 0, 1, 0, 0, 0], // Pattern: 1 neighbor (bottom-right)
+            1, // Center is ALIVE
+            "RULE 1: LONELINESS (0 or 1 Neighbor)",
+            "If an <span style='color:green;'>ALIVE</span> cell has <span style='color:#d90429;'>fewer than 2</span> living neighbors...",
+            "The cell <span style='color:#d90429;'>DIES</span>."
+        );
+
+        // Rule 2 & 3: Survival (Happy Crowd) - 3 neighbors
+        visualsHtml += createRuleVisual(
+            [1, 1, 0, 0, 0, 0, 0, 1], // Pattern: 3 neighbors (top-left, top-mid, bottom-left)
+            1, // Center is ALIVE
+            "RULE 2: SURVIVAL (2 or 3 Neighbors)",
+            "If an <span style='color:green;'>ALIVE</span> cell has <span style='color:green;'>exactly 2 or 3</span> living neighbors...",
+            "The cell <span style='color:green;'>STAYS ALIVE</span>."
+        );
+        
+        // Rule 4: Overpopulation (Too Crowded) - 4 neighbors
+        visualsHtml += createRuleVisual(
+            [1, 1, 1, 1, 0, 0, 0, 0], // Pattern: 4 neighbors (top row + right)
+            1, // Center is ALIVE
+            "RULE 3: CROWDING (4+ Neighbors)",
+            "If an <span style='color:green;'>ALIVE</span> cell has <span style='color:#d90429;'>more than 3</span> living neighbors...",
+            "The cell <span style='color:#d90429;'>DIES</span>."
+        );
+
+        // Rule 5: Reproduction (New Birth) - 3 neighbors
+        visualsHtml += createRuleVisual(
+            [1, 1, 1, 0, 0, 0, 0, 0], // Pattern: 3 neighbors (top row)
+            0, // Center is DEAD
+            "RULE 4: NEW BIRTH (Exactly 3 Neighbors)",
+            "If a <span style='color:#d90429;'>DEAD</span> cell has <span style='color:green;'>exactly 3</span> living neighbors...",
+            "The cell <span style='color:green;'>COMES TO LIFE</span>."
+        );
+        
+        rulesContainer.innerHTML = visualsHtml;
     }
 
 
@@ -687,7 +841,6 @@
     /** Starts the continuous simulation loop. */
     function startSimulation() {
         if (population === 0 && generation === 0) {
-            // If starting from a clear board, prompt for a pattern
             if (gridSize > 0 && !confirm("The grid is empty! Start with a random pattern?")) {
                 return;
             }
@@ -701,7 +854,6 @@
         canvas.style.cursor = 'default';
         document.getElementById('grid-size').disabled = true;
 
-        // Run the simulation loop
         runInterval = setInterval(() => {
             stepSimulation();
         }, 1000 / fps);
@@ -720,7 +872,7 @@
     /** Executes one generation step. */
     function stepSimulation() {
         // 1. Store current state for history/stepBack
-        const currentGridClone = grid.map(row => [...row]); // Deep clone for check and history
+        const currentGridClone = grid.map(row => [...row]); 
         
         // 2. Calculate next state
         const { nextGrid, liveCount } = calculateNextGeneration(currentGridClone);
@@ -746,7 +898,7 @@
         // 7. Halt if a reason was found
         if (haltReason) {
             stopSimulation();
-            showModal(haltReason);
+            showHaltModal(haltReason);
         }
     }
     
@@ -754,18 +906,15 @@
     function stepBack() {
         if (isRunning) stopSimulation();
         
-        // Remove the current state that was just rendered (which is an incremented generation)
-        // We need to revert to the last item in the history.
         if (gridHistory.length > 1) { 
-            grid = gridHistory.pop(); // Revert to the previous state (the one before the current grid)
+            grid = gridHistory.pop(); 
             generation--;
-            updatePopulation(); // Recalculate based on restored grid
+            updatePopulation(); 
             render();
             updateUI();
         } else if (gridHistory.length === 1) {
-             // If only the initial state is left, revert to it and reset generation/pop
              grid = gridHistory[0];
-             gridHistory = []; // Clear history after reverting to original state
+             gridHistory = []; 
              generation = 0;
              updatePopulation();
              render();
