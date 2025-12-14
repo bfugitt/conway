@@ -82,6 +82,7 @@
             background: var(--sys-white);
             border: 1px solid var(--sys-white);
             box-shadow: inset 1px 1px 0 #000;
+            cursor: pointer;
         }
 
         /* Main Content Area */
@@ -187,6 +188,11 @@
             flex-wrap: wrap;
         }
 
+        .sim-control-buttons {
+            display: flex;
+            gap: 5px;
+        }
+
         label {
             font-size: 1.1rem;
         }
@@ -217,6 +223,51 @@
             padding: 5px 0 0;
             border-top: 1px dashed var(--sys-black);
         }
+        
+        /* Retro Modal Styles */
+        .retro-modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.6);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .retro-modal-window {
+            background: var(--sys-white);
+            border: 2px solid var(--sys-black);
+            box-shadow: 6px 6px 0px rgba(0,0,0,0.5);
+            width: 90%;
+            max-width: 350px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .modal-content {
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            align-items: center;
+            text-align: center;
+        }
+
+        .modal-text {
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: #d90429; /* A retro red for warnings */
+            margin-bottom: 15px;
+            padding: 5px;
+            border: 1px dashed var(--sys-black);
+            width: 100%;
+            box-sizing: border-box;
+        }
+
 
         /* Responsive */
         @media (max-width: 500px) {
@@ -231,7 +282,7 @@
 
 <div class="window">
     <div class="title-bar">
-        <div class="close-box"></div>
+        <div class="close-box" onclick="closeModal()"></div>
         <div class="title-lines"></div>
         <span>CELL.LIFE</span>
         <div class="title-lines"></div>
@@ -242,7 +293,7 @@
         <div class="toolbar">
             <div class="control-group">
                 <span class="control-group-title">SETUP:</span>
-                <button class="btn active" id="tool-pen" onclick="setTool('pen')" title="Toggle Cell State">Toggle</button>
+                <!-- Removed redundant Toggle button -->
                 <button class="btn" onclick="clearGrid()">Clear All</button>
                 <button class="btn" onclick="randomizeGrid()">Random</button>
             </div>
@@ -265,8 +316,12 @@
 
         <!-- Simulation Controls -->
         <div class="simulation-controls">
-            <button class="btn" id="play-btn" onclick="toggleSimulation()">&#9658; START</button>
-            <button class="btn" id="step-btn" onclick="stepSimulation()">STEP</button>
+            <div class="sim-control-buttons">
+                <button class="btn" id="play-btn" onclick="toggleSimulation()">&#9658; START</button>
+                <button class="btn" id="step-btn" onclick="stepSimulation()">STEP</button>
+                <!-- Added Step Back Button -->
+                <button class="btn" id="step-back-btn" onclick="stepBack()" disabled>&lt; BACK</button> 
+            </div>
             <div style="display:flex; align-items:center; gap:5px;">
                 <label>Speed:</label>
                 <!-- Range is 1 (Slow) to 20 (Fast) -->
@@ -281,6 +336,26 @@
     </div>
 </div>
 
+<!-- Modal HTML structure for halting messages -->
+<div id="retroModal" class="retro-modal-overlay" style="display: none;">
+    <div class="retro-modal-window">
+        <div class="title-bar">
+            <div class="close-box" onclick="closeModal()"></div>
+            <div class="title-lines"></div>
+            <span>SIMULATION Halted</span>
+            <div class="title-lines"></div>
+        </div>
+        <div class="modal-content">
+            <p style="font-size: 1.2rem; margin-bottom: 10px;">SYSTEM MESSAGE:</p>
+            <div id="modal-reason" class="modal-text"></div>
+            <p>Generation: <span id="modal-generation">0</span></p>
+            <p>Population: <span id="modal-population">0</span></p>
+            <button class="btn" onclick="closeModal()">OKAY</button>
+        </div>
+    </div>
+</div>
+
+
 <script>
     // --- Configuration ---
     let gridSize = 16;
@@ -291,6 +366,8 @@
     let grid = []; // 2D array: 0=dead, 1=alive
     let generation = 0;
     let population = 0;
+    let gridHistory = []; // Stores previous grid states
+    const maxHistory = 10; // Only store the last N generations for oscillation check and step back
     
     let isRunning = false;
     let runInterval = null;
@@ -302,8 +379,13 @@
     const ctx = canvas.getContext('2d');
     const playBtn = document.getElementById('play-btn');
     const stepBtn = document.getElementById('step-btn');
+    const stepBackBtn = document.getElementById('step-back-btn');
     const genIndicator = document.getElementById('generation-indicator');
     const popIndicator = document.getElementById('population-indicator');
+    const retroModal = document.getElementById('retroModal');
+    const modalReason = document.getElementById('modal-reason');
+    const modalGen = document.getElementById('modal-generation');
+    const modalPop = document.getElementById('modal-population');
     
     // --- Initialization ---
     function init() {
@@ -313,6 +395,7 @@
         pixelSize = canvasSize / gridSize;
 
         grid = createNewGrid(gridSize);
+        gridHistory = []; // Ensure history is empty on init
         render();
         updateUI();
     }
@@ -340,6 +423,7 @@
         grid = createNewGrid(gridSize);
         generation = 0;
         population = 0;
+        gridHistory = []; // Reset history
         render();
         updateUI();
     }
@@ -349,6 +433,7 @@
         grid = createNewGrid(gridSize);
         generation = 0;
         population = 0;
+        gridHistory = []; // Reset history
         render();
         updateUI();
     }
@@ -367,6 +452,7 @@
         }
         grid = newGrid;
         generation = 0;
+        gridHistory = []; // Clear history after randomization
         updatePopulation(); // Recalculate population after randomization
         render();
         updateUI();
@@ -379,6 +465,8 @@
         
         // Use a non-disruptive way to ask for confirmation
         if (population > 0 || generation > 0) {
+            // NOTE: Using confirm temporarily as per previous examples, 
+            // but will replace with a custom modal if requested.
             if(!confirm("Changing grid size will reset the current pattern and generation count. Continue?")) {
                 select.value = gridSize; // Revert selection
                 return;
@@ -392,62 +480,8 @@
 
     // --- Conway's Game of Life Core Logic ---
     
-    /** Calculates the next state of the grid based on Conway's rules. */
-    function applyConwayRules() {
-        // FIX: nextGrid must be created using createNewGrid, NOT the original broken createEmptyGrid
-        const nextGrid = createNewGrid(gridSize); 
-        let liveCount = 0;
-
-        for (let y = 0; y < gridSize; y++) {
-            for (let x = 0; x < gridSize; x++) {
-                const state = grid[y][x];
-                const neighbors = countNeighbors(x, y);
-
-                // --- Conway's Rules ---
-                
-                // Rule 1: Underpopulation
-                if (state === 1 && neighbors < 2) {
-                    nextGrid[y][x] = 0; // Dies
-                } 
-                // Rule 2 & 3: Survival
-                else if (state === 1 && (neighbors === 2 || neighbors === 3)) {
-                    nextGrid[y][x] = 1; // Survives
-                }
-                // Rule 4: Overpopulation
-                else if (state === 1 && neighbors > 3) {
-                    nextGrid[y][x] = 0; // Dies
-                }
-                // Rule 5: Reproduction
-                else if (state === 0 && neighbors === 3) {
-                    nextGrid[y][x] = 1; // Becomes alive
-                } 
-                // Default: Stays the same (dead stays dead unless 3 neighbors)
-                else {
-                    nextGrid[y][x] = state;
-                }
-
-                if (nextGrid[y][x] === 1) {
-                    liveCount++;
-                }
-            }
-        }
-
-        // Check for stability (future feature for "goals")
-        // const isStable = JSON.stringify(grid) === JSON.stringify(nextGrid);
-        
-        grid = nextGrid;
-        population = liveCount;
-        generation++;
-        
-        // Optional: If stable, stop simulation (for educational focus)
-        // if (isRunning && isStable && generation > 1) { 
-        //    stopSimulation();
-        //    console.log("System reached a stable state!");
-        // }
-    }
-
-    /** Counts the number of live neighbors for a cell (x, y). */
-    function countNeighbors(x, y) {
+    /** Counts the number of live neighbors for a cell (x, y) on a specified grid. */
+    function countNeighborsForGrid(x, y, targetGrid) {
         let count = 0;
         
         // Check all 8 surrounding cells
@@ -460,11 +494,80 @@
                 const ny = (y + dy + gridSize) % gridSize;
                 
                 // Check if the neighbor is alive (1)
-                count += grid[ny][nx];
+                count += targetGrid[ny][nx];
             }
         }
         return count;
     }
+
+    /** Calculates the next state of the grid based on Conway's rules, returning the new grid and live count. */
+    function calculateNextGeneration(inputGrid) {
+        const nextGrid = createNewGrid(gridSize); 
+        let liveCount = 0;
+
+        for (let y = 0; y < gridSize; y++) {
+            for (let x = 0; x < gridSize; x++) {
+                const neighbors = countNeighborsForGrid(x, y, inputGrid);
+                const state = inputGrid[y][x];
+
+                // --- Conway's Rules (Combined logic) ---
+                // State 1 (Alive): Survives if 2 or 3 neighbors. Dies otherwise.
+                // State 0 (Dead): Becomes alive if 3 neighbors. Stays dead otherwise.
+                const isAlive = state === 1;
+                let newState = 0;
+
+                if (isAlive && (neighbors === 2 || neighbors === 3)) {
+                    newState = 1; // Survival
+                } else if (!isAlive && neighbors === 3) {
+                    newState = 1; // Reproduction
+                }
+                
+                nextGrid[y][x] = newState;
+
+                if (newState === 1) {
+                    liveCount++;
+                }
+            }
+        }
+        return { nextGrid, liveCount };
+    }
+    
+    /** Checks for halting conditions (stability, oscillation, extinction, overgrowth). */
+    function checkStopConditions(currentGrid, nextGrid, liveCount) {
+        const totalCells = gridSize * gridSize;
+        let reason = null;
+
+        // 3. Extinction/Overgrowth
+        if (liveCount === 0) {
+            reason = "EXTINCTION: All cells are dead. Life faded away.";
+        } else if (liveCount === totalCells) {
+            reason = "OVERGROWTH: Grid is completely filled. Maximum density reached.";
+        }
+        
+        // Convert to string for easy comparison (Grid is an array of arrays)
+        const currentGridString = JSON.stringify(currentGrid);
+        const nextGridString = JSON.stringify(nextGrid);
+        
+        // 1. Stability (Current grid equals Next grid)
+        if (!reason && currentGridString === nextGridString) {
+            reason = "STABILITY: Pattern reached equilibrium (no visible movement).";
+        }
+        
+        // 2. Oscillation (Next grid equals a recent previous grid in history)
+        if (!reason) {
+            for (let i = 0; i < gridHistory.length; i++) {
+                if (nextGridString === JSON.stringify(gridHistory[i])) {
+                    // gridHistory[i] is the state at Generation (current_gen - gridHistory.length + i)
+                    const matchedGen = generation - gridHistory.length + i;
+                    reason = `OSCILLATION: Pattern entered a loop (detected state matching Generation ${matchedGen}).`;
+                    break;
+                }
+            }
+        }
+        
+        return reason;
+    }
+
 
     // --- Drawing Engine ---
 
@@ -506,12 +609,7 @@
 
     // --- Interaction ---
 
-    /** Sets the tool (currently only 'pen' for toggling). */
-    function setTool(t) {
-        // In Game of Life, the tool just toggles the state, so this is mostly aesthetic
-        document.getElementById('tool-pen').classList.add('active');
-        canvas.style.cursor = 'crosshair';
-    }
+    // The setTool function is removed as it's no longer necessary.
 
     /** Converts mouse/touch coordinates to grid coordinates. */
     function getGridCoords(e) {
@@ -534,6 +632,11 @@
             // Toggles the state: 1 -> 0, or 0 -> 1
             const newState = 1 - grid[y][x]; 
             if (grid[y][x] !== newState) {
+                // Save current state before toggle for the first step back
+                if (generation === 0 && gridHistory.length === 0) {
+                     gridHistory.push(grid.map(row => [...row])); // Save initial state
+                }
+
                 grid[y][x] = newState;
                 render();
                 // Recalculate population immediately after setup change
@@ -550,17 +653,27 @@
         if (!isRunning) handleToggle(e); 
         isDrawing = true; 
     });
-    // Optional: Allow drag-painting if desired (uncomment next line)
-    // canvas.addEventListener('mousemove', (e) => { if (isDrawing && !isRunning) handleToggle(e); });
     window.addEventListener('mouseup', () => { isDrawing = false; });
     
     canvas.addEventListener('touchstart', (e) => { 
         if (!isRunning) handleToggle(e); 
         isDrawing = true; 
     }, {passive: false});
-    // Optional: Allow drag-painting if desired (uncomment next line)
-    // canvas.addEventListener('touchmove', (e) => { if (isDrawing && !isRunning) handleToggle(e); }, {passive: false});
     canvas.addEventListener('touchend', () => { isDrawing = false; });
+
+
+    // --- Modal Functions ---
+
+    function showModal(reason) {
+        modalReason.innerText = reason;
+        modalGen.innerText = generation;
+        modalPop.innerText = population;
+        retroModal.style.display = 'flex';
+    }
+
+    function closeModal() {
+        retroModal.style.display = 'none';
+    }
 
 
     // --- Simulation Controls ---
@@ -584,6 +697,7 @@
         isRunning = true;
         playBtn.innerHTML = '&#9632; STOP';
         stepBtn.disabled = true;
+        stepBackBtn.disabled = true;
         canvas.style.cursor = 'default';
         document.getElementById('grid-size').disabled = true;
 
@@ -605,10 +719,60 @@
 
     /** Executes one generation step. */
     function stepSimulation() {
-        applyConwayRules();
+        // 1. Store current state for history/stepBack
+        const currentGridClone = grid.map(row => [...row]); // Deep clone for check and history
+        
+        // 2. Calculate next state
+        const { nextGrid, liveCount } = calculateNextGeneration(currentGridClone);
+
+        // 3. Check for stopping condition against the new state
+        const haltReason = checkStopConditions(currentGridClone, nextGrid, liveCount);
+        
+        // 4. Store the current grid BEFORE moving to the next one
+        gridHistory.push(currentGridClone);
+        if (gridHistory.length > maxHistory) {
+            gridHistory.shift();
+        }
+
+        // 5. Update global state to the next generation
+        grid = nextGrid;
+        population = liveCount;
+        generation++;
+
+        // 6. Render and update UI
         render();
         updateUI();
+
+        // 7. Halt if a reason was found
+        if (haltReason) {
+            stopSimulation();
+            showModal(haltReason);
+        }
     }
+    
+    /** Executes one generation step backward. */
+    function stepBack() {
+        if (isRunning) stopSimulation();
+        
+        // Remove the current state that was just rendered (which is an incremented generation)
+        // We need to revert to the last item in the history.
+        if (gridHistory.length > 1) { 
+            grid = gridHistory.pop(); // Revert to the previous state (the one before the current grid)
+            generation--;
+            updatePopulation(); // Recalculate based on restored grid
+            render();
+            updateUI();
+        } else if (gridHistory.length === 1) {
+             // If only the initial state is left, revert to it and reset generation/pop
+             grid = gridHistory[0];
+             gridHistory = []; // Clear history after reverting to original state
+             generation = 0;
+             updatePopulation();
+             render();
+             updateUI();
+        }
+    }
+
 
     /** Updates the FPS based on the slider, and restarts interval if running. */
     function updateSpeed() {
@@ -640,12 +804,14 @@
 
         // Enable/Disable step button based on running state
         stepBtn.disabled = isRunning;
+        
+        // Enable/Disable step back button based on history size
+        stepBackBtn.disabled = isRunning || gridHistory.length <= 1;
     }
 
     // --- Start ---
     window.onload = function() {
         init();
-        setTool('pen'); // Ensure the toggle tool is selected initially
     }
 </script>
 
