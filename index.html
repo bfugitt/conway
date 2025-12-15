@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Conway - Game of Life</title>
+    <title>System 6 - CELL.LIFE</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -124,7 +124,7 @@
             border: 2px solid var(--sys-black);
             box-shadow: 4px 4px 0px rgba(0,0,0,0.2);
             padding: 5px;
-            min-width: 150px;
+            min-width: 180px;
             z-index: 100;
             flex-direction: column;
             gap: 5px;
@@ -299,7 +299,7 @@
             border-top: 1px dashed var(--sys-black);
         }
         
-        /* Analysis Panel & D3 Chart Styles (NEW) */
+        /* Analysis Panel & D3 Chart Styles */
         .analysis-panel {
             padding: 10px; 
             border-top: 2px solid var(--sys-black); 
@@ -310,7 +310,7 @@
             border: 2px solid var(--sys-black);
             padding: 5px;
             font-family: 'VT323', monospace;
-            box-sizing: border-box; /* Important for calculating width correctly */
+            box-sizing: border-box; 
         }
         #population-chart svg text {
             fill: var(--sys-black);
@@ -333,6 +333,7 @@
             border: 2px solid var(--sys-black);
             box-sizing: content-box;
         }
+        
         .rule-visual .cell {
             border: 1px solid var(--cell-border);
             background: var(--cell-dead);
@@ -407,7 +408,7 @@
     <div class="title-bar">
         <div class="close-box" onclick="closeModal('halt')"></div>
         <div class="title-lines"></div>
-        <span>Conway Game of Life</span>
+        <span>CELL.LIFE</span>
         <div class="title-lines"></div>
     </div>
     
@@ -437,16 +438,21 @@
         <div class="menu-item">PATTERNS
             <div class="dropdown-content">
                 <select id="pattern-selector" onchange="loadSelectedPattern()">
-                    <option value="">-- Load a Pattern --</option>
+                    <option value="">-- Add a Pattern (Randomly) --</option>
                     <optgroup label="Still Lifes (Stable)">
                         <option value="block">Block</option>
                         <option value="beehive">Beehive</option>
                         <option value="boat">Boat</option>
                     </optgroup>
                     <optgroup label="Oscillators (Repeating)">
-                        <option value="blinker">Blinker</option>
-                        <option value="toad">Toad</option>
-                        <option value="pulsar">Pulsar</option>
+                        <option value="blinker">Blinker (P=2)</option>
+                        <option value="toad">Toad (P=2)</option>
+                        <option value="pulsar">Pulsar (P=3)</option>
+                        <option value="penta_decalon">Penta-decalon (P=15)</option>
+                    </optgroup>
+                    <optgroup label="Growers (Complex)">
+                        <option value="r_pentomino">R-Pentomino</option>
+                        <option value="acorn">Acorn</option>
                     </optgroup>
                     <optgroup label="Spaceships (Moving)">
                         <option value="glider">Glider (The Classic)</option>
@@ -455,6 +461,7 @@
                 </select>
             </div>
         </div>
+        
     </nav>
     <!-- END MENU BAR -->
 
@@ -485,13 +492,13 @@
             </div>
         </div>
 
-        <!-- Info Panel / Future Achievement Display -->
+        <!-- Info Panel -->
         <div class="info-panel">
             Generation: <span id="generation-indicator">0</span> | Population: <span id="population-indicator">0</span>
         </div>
     </div>
     
-    <!-- Population Analysis Panel (NEW) -->
+    <!-- Population Analysis Panel -->
     <div class="analysis-panel">
         <h3 style="font-size: 1.1rem; margin: 0 0 5px; text-align: center;">Population Analysis (Live)</h3>
         <div id="population-chart">
@@ -502,18 +509,18 @@
     
 </div>
 
-<!-- Modals (Halt and Help) remain the same -->
+<!-- Modals -->
 <div id="haltModal" class="retro-modal-overlay" style="display: none;">
     <div class="retro-modal-window">
         <div class="title-bar">
             <div class="close-box" onclick="closeModal('halt')"></div>
             <div class="title-lines"></div>
-            <span>SIMULATION HALTED</span>
+            <span>SYSTEM ALERT</span>
             <div class="title-lines"></div>
         </div>
         <div class="modal-content">
-            <p style="font-size: 1.2rem; margin-bottom: 10px;">SYSTEM ALERT:</p>
-            <div id="modal-halt-reason" class="modal-text"></div>
+            <p style="font-size: 1.2rem; margin-bottom: 10px;">MESSAGE:</p>
+            <div id="modal-halt-reason" class="modal-text" style="text-align: center; color: var(--sys-black);"></div>
             <p>Generation: <span id="modal-halt-generation">0</span></p>
             <p>Population: <span id="modal-halt-population">0</span></p>
             <button class="btn" onclick="closeModal('halt')">OKAY</button>
@@ -558,6 +565,7 @@
     let gridHistory = []; // Stores previous grid states
     const maxHistory = 10; // Only store the last N generations for oscillation check
     let populationHistory = []; // Stores {generation, population} for charting
+    let initialPopulation = 0; // Stores population at G0 
     
     let isRunning = false;
     let isHaltingEnabled = true;
@@ -571,7 +579,8 @@
     let chartHeight = chartHeightTotal - chartMargin.top - chartMargin.bottom;
     let svg; 
     const MAX_VISIBLE_GENERATIONS = 200; // Constant for scrolling window
-
+    
+    
     // --- DOM Elements ---
     const canvas = document.getElementById('editorCanvas');
     const ctx = canvas.getContext('2d');
@@ -582,22 +591,25 @@
     const stepBackBtn = document.getElementById('step-back-btn');
     const genIndicator = document.getElementById('generation-indicator');
     const popIndicator = document.getElementById('population-indicator');
-    
+
     // Halting Modal Elements
     const haltModal = document.getElementById('haltModal');
     const modalHaltReason = document.getElementById('modal-halt-reason');
     const modalHaltGen = document.getElementById('modal-halt-generation');
     const modalHaltPop = document.getElementById('modal-halt-population');
-
+    
     // Help Modal Elements
     const helpModal = document.getElementById('helpModal');
     const rulesContainer = document.getElementById('rules-container');
     
-    // --- Pattern Definitions ---
+    // --- Pattern Definitions (Expanded) ---
     const PATTERNS = {
+        // Still Lifes (Stable)
         block: [[0, 0], [1, 0], [0, 1], [1, 1]], 
         beehive: [[1, 0], [2, 0], [0, 1], [3, 1], [1, 2], [2, 2]], 
         boat: [[0, 0], [1, 0], [0, 1], [2, 1], [1, 2]], 
+        
+        // Oscillators (Repeating)
         blinker: [[0, 1], [1, 1], [2, 1]], 
         toad: [[1, 0], [2, 0], [3, 0], [0, 1], [1, 1], [2, 1]], 
         pulsar: [ 
@@ -612,13 +624,36 @@
             [0, 10], [5, 10], [7, 10], [12, 10],
             [2, 12], [3, 12], [4, 12], [8, 12], [9, 12], [10, 12]
         ],
+        penta_decalon: [
+            [4, 0], [5, 0], [6, 0], [7, 0], [8, 0], [9, 0], [10, 0], [11, 0], 
+            [4, 1], [11, 1], 
+            [4, 2], [5, 2], [6, 2], [7, 2], [8, 2], [9, 2], [10, 2], [11, 2],
+            [4, 4], [5, 4], [6, 4], [7, 4], [8, 4], [9, 4], [10, 4], [11, 4], 
+            [4, 5], [11, 5], 
+            [4, 6], [5, 6], [6, 6], [7, 6], [8, 6], [9, 6], [10, 6], [11, 6],
+        ],
+
+        // Growers (Complex/Monomers)
+        r_pentomino: [
+            [1, 0], [2, 0], 
+            [0, 1], [1, 1], 
+            [1, 2]
+        ],
+        acorn: [
+            [1, 0], 
+            [3, 1],
+            [0, 2], [1, 2], [4, 2], [5, 2], [6, 2]
+        ],
+        
+        // Spaceships (Moving)
         glider: [[1, 0], [2, 1], [0, 2], [1, 2], [2, 2]], 
         lwss: [ 
             [1, 0], [4, 0],
             [0, 1], [0, 2], [4, 2],
             [0, 3], [1, 3], [2, 3], [3, 3]
-        ]
+        ],
     };
+
 
     // --- Initialization ---
     function init() {
@@ -632,6 +667,7 @@
         populationHistory = []; 
         generation = 0;
         population = 0;
+        initialPopulation = 0;
         
         initGraph(); 
         render();
@@ -646,12 +682,10 @@
         const container = document.getElementById('population-chart');
         if (!container) return;
         
-        // Calculate dimensions based on the container width
+        // Adjust chart width based on the actual container size (minus padding/margins)
         const containerBlock = document.querySelector('.analysis-panel');
-        // Subtract 20px (10px padding on left/right of analysis-panel)
         chartWidth = containerBlock.offsetWidth - 20 - chartMargin.left - chartMargin.right;
         
-        // Remove any existing SVG and recreate
         d3.select(container).select("svg").remove();
 
         svg = d3.select(container).append("svg")
@@ -660,7 +694,6 @@
           .append("g")
             .attr("transform", `translate(${chartMargin.left},${chartMargin.top})`);
             
-        // Add axes groups
         svg.append("g")
             .attr("class", "x-axis")
             .attr("transform", `translate(0,${chartHeight})`);
@@ -668,14 +701,12 @@
         svg.append("g")
             .attr("class", "y-axis");
             
-        // Add path for the line
         svg.append("path")
             .attr("class", "population-line")
             .attr("fill", "none")
             .attr("stroke", "#d90429")
             .attr("stroke-width", 2);
             
-        // Initial setup of the graph area
         updateGraph();
     }
 
@@ -684,17 +715,15 @@
         if (!svg) return;
         
         const data = populationHistory;
-        const totalMaxPop = gridSize * gridSize;
+        const totalCells = gridSize * gridSize;
 
         // 1. Determine X-Axis Domain (Scrolling Logic)
         let minGen, maxGenD3;
         
         if (generation <= MAX_VISIBLE_GENERATIONS) {
-            // Fixed graph from 0 to MAX_VISIBLE_GENERATIONS (200)
             minGen = 0;
             maxGenD3 = MAX_VISIBLE_GENERATIONS; 
         } else {
-            // Scroll the graph window to show only the last 200 generations
             minGen = generation - MAX_VISIBLE_GENERATIONS; 
             maxGenD3 = generation;                         
         }
@@ -704,30 +733,25 @@
 
         // 3. Determine Dynamic Y-Axis Domain (Population)
         let minPopVisible = 0;
-        let maxPopVisible = 50; // Initial default buffer
+        let maxPopVisible = 50; 
         
         if (visibleData.length > 0) {
             const currentMinPop = d3.min(visibleData, d => d.population);
             const currentMaxPop = d3.max(visibleData, d => d.population);
 
-            // Apply padding/buffer to the domain
             const range = currentMaxPop - currentMinPop;
-            const paddingFactor = 0.1; // 10% padding
+            const paddingFactor = 0.1; 
             
             if (range === 0) {
-                // Special handling for constant population (e.g., still life)
-                // Add a fixed buffer of 5 around the constant value, ensuring it doesn't go below 0
                 minPopVisible = Math.max(0, currentMinPop - 5);
                 maxPopVisible = currentMaxPop + 5;
             } else {
-                // Apply dynamic padding
                 const padding = range * paddingFactor;
                 minPopVisible = Math.max(0, currentMinPop - padding); 
-                maxPopVisible = Math.min(totalMaxPop, currentMaxPop + padding); // Cap at total grid size
+                maxPopVisible = Math.min(totalCells, currentMaxPop + padding);
             }
             
         } else if (generation === 0) {
-            // If generation 0, set scale slightly above current population
             minPopVisible = 0;
             maxPopVisible = Math.max(10, population + 5); 
         }
@@ -738,7 +762,7 @@
             .range([0, chartWidth]);
 
         const yScale = d3.scaleLinear()
-            .domain([minPopVisible, maxPopVisible]) // Use dynamic domain
+            .domain([minPopVisible, maxPopVisible]) 
             .range([chartHeight, 0]);
 
         // 5. Line generator
@@ -747,35 +771,31 @@
             .y(d => yScale(d.population));
 
         // 6. Update Axes
-        // Calculate an appropriate number of ticks, minimum 5.
         const tickCount = Math.min(10, Math.floor((maxGenD3 - minGen) / 20) + 1);
 
         svg.select(".x-axis")
-            .transition().duration(50) // Smooth transition for scrolling
+            .transition().duration(50) 
             .call(d3.axisBottom(xScale).tickFormat(d3.format("d")).ticks(tickCount));
         
         svg.select(".y-axis")
-            .transition().duration(50) // Smooth transition for dynamic scaling
-            .call(d3.axisLeft(yScale).ticks(5).tickFormat(d3.format("d"))); // Use "d" for integer format
+            .transition().duration(50) 
+            .call(d3.axisLeft(yScale).ticks(5).tickFormat(d3.format("d"))); 
 
-        // Ensure axis lines are black
         svg.selectAll(".x-axis path, .y-axis path, .x-axis line, .y-axis line").attr("stroke", "var(--sys-black)");
-
 
         // 7. Update Line Path
         svg.select(".population-line")
             .datum(data)
-            .transition().duration(50) // Smooth transition for line movement
+            .transition().duration(50)
             .attr("d", line);
     }
     
-    // Add a resize listener to handle container changes
     window.addEventListener('resize', () => {
         initGraph();
     });
 
 
-    // --- Grid Logic (rest of the file remains largely the same) ---
+    // --- Grid Logic ---
 
     function createNewGrid(size) {
         const newGrid = [];
@@ -796,6 +816,7 @@
         population = 0;
         gridHistory = []; 
         populationHistory = []; 
+        initialPopulation = 0;
         render();
         updateUI();
         updateGraph(); 
@@ -808,6 +829,7 @@
         population = 0;
         gridHistory = []; 
         populationHistory = []; 
+        initialPopulation = 0;
         render();
         updateUI();
         updateGraph(); 
@@ -829,6 +851,7 @@
         gridHistory = []; 
         populationHistory = []; 
         updatePopulation(); 
+        initialPopulation = population; // Set G0 population
         render();
         updateUI();
         updateGraph(); 
@@ -840,9 +863,7 @@
         const newSize = parseInt(select.value);
         
         if (population > 0 || generation > 0) {
-            // Using custom modal instead of confirm()
-            // In a real app, this would show a custom modal:
-            // showConfirmationModal("Changing grid size will reset the current pattern and generation count. Continue?", () => { /* proceed */ }, () => { /* cancel */ });
+            // Note: window.confirm used here as per requirements, replace with modal if required
             const confirmed = window.confirm("Changing grid size will reset the current pattern and generation count. Continue?");
             if (!confirmed) {
                 select.value = gridSize; 
@@ -854,17 +875,11 @@
         pixelSize = canvasSize / gridSize;
         resetSimulation();
     }
+    
+    // --- Pattern Additive Placement Logic (NEW) ---
 
-    function loadSelectedPattern() {
-        const selector = document.getElementById('pattern-selector');
-        const patternKey = selector.value;
-
-        if (!patternKey || !PATTERNS[patternKey]) return;
-
-        if (isRunning) stopSimulation();
-        clearGrid();
-
-        const pattern = PATTERNS[patternKey];
+    function getPatternBounds(pattern) {
+        if (pattern.length === 0) return { width: 0, height: 0, minX: 0, minY: 0 };
         
         let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
         pattern.forEach(([x, y]) => {
@@ -873,35 +888,101 @@
             maxX = Math.max(maxX, x);
             maxY = Math.max(maxY, y);
         });
+        return {
+            width: maxX - minX + 1,
+            height: maxY - minY + 1,
+            minX: minX,
+            minY: minY
+        };
+    }
 
-        const patternWidth = maxX - minX + 1;
-        const patternHeight = maxY - minY + 1;
+    function canPlacePattern(pattern, offsetX, offsetY, bounds) {
+        const { width, height, minX, minY } = bounds;
+
+        // Boundary check
+        if (offsetX < 0 || offsetY < 0 || 
+            offsetX + width > gridSize || offsetY + height > gridSize) {
+            return false;
+        }
+
+        // Collision check
+        for (const [px, py] of pattern) {
+            const gridX = px + offsetX - minX;
+            const gridY = py + offsetY - minY;
+            
+            // Check if target cell is already occupied
+            if (grid[gridY][gridX] === 1) {
+                return false; // Collision
+            }
+        }
+        return true; // No collision, within bounds
+    }
+
+    function applyPattern(pattern, offsetX, offsetY, bounds) {
+        const { minX, minY } = bounds;
+        for (const [px, py] of pattern) {
+            const gridX = px + offsetX - minX;
+            const gridY = py + offsetY - minY;
+            grid[gridY][gridX] = 1; // Set cell to alive
+        }
+    }
+
+    function loadSelectedPattern() {
+        const selector = document.getElementById('pattern-selector');
+        const patternKey = selector.value;
         
+        if (!patternKey || !PATTERNS[patternKey]) return;
+        if (isRunning) stopSimulation();
+        
+        const pattern = PATTERNS[patternKey];
+        const bounds = getPatternBounds(pattern);
+        const patternWidth = bounds.width;
+        const patternHeight = bounds.height;
+        
+        // Safety check for pattern size
         if (patternWidth > gridSize || patternHeight > gridSize) {
              selector.value = "";
              showHaltModal(`Pattern "${patternKey}" is too large for the current ${gridSize}x${gridSize} grid. Try switching to 32x32 or 64x64.`, 'Pattern Load Error');
              return;
         }
+        
+        let placed = false;
+        const MAX_ATTEMPTS = 50;
 
-        const offsetX = Math.floor((gridSize - patternWidth) / 2) - minX;
-        const offsetY = Math.floor((gridSize - patternHeight) / 2) - minY;
+        // Define the boundaries for random offset generation
+        const maxXOffset = gridSize - patternWidth;
+        const maxYOffset = gridSize - patternHeight;
 
-        grid = createNewGrid(gridSize);
-        pattern.forEach(([x, y]) => {
-            const finalX = x + offsetX;
-            const finalY = y + offsetY;
-            if (finalX >= 0 && finalX < gridSize && finalY >= 0 && finalY < gridSize) {
-                 grid[finalY][finalX] = 1;
+        for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+            // Randomly choose the top-left corner of the pattern's bounding box
+            const randX = Math.floor(Math.random() * (maxXOffset + 1));
+            const randY = Math.floor(Math.random() * (maxYOffset + 1));
+
+            if (canPlacePattern(pattern, randX, randY, bounds)) {
+                applyPattern(pattern, randX, randY, bounds);
+                placed = true;
+                break;
             }
-        });
+        }
 
-        // Add initial state to history for stepBack
-        gridHistory.push(grid.map(row => [...row])); 
-        generation = 0;
-        updatePopulation();
+        if (!placed) {
+            showHaltModal(`Could not find a clear space to place the ${patternKey} pattern after ${MAX_ATTEMPTS} attempts. Try clearing the grid or choosing a smaller pattern.`, 'No Room Available');
+            selector.value = ""; // Reset selector
+            return;
+        }
+
+        // Update state and UI
+        if (generation === 0 && gridHistory.length === 0) {
+             // Save G0 state for stepBack, only if this is the first pattern interaction
+             gridHistory.push(grid.map(row => [...row])); 
+             initialPopulation = population; // Snapshot initial pop
+        }
+
+        updatePopulation(); 
         render();
         updateUI();
         updateGraph(); 
+        selector.value = ""; // Reset selector after placement
     }
 
 
@@ -932,10 +1013,11 @@
                 const isAlive = state === 1;
                 let newState = 0;
 
+                // Rule 1 & 3: Loneliness and Overcrowding
                 if (isAlive && (neighbors === 2 || neighbors === 3)) {
-                    newState = 1; 
+                    newState = 1; // Rule 2: Survival
                 } else if (!isAlive && neighbors === 3) {
-                    newState = 1; 
+                    newState = 1; // Rule 4: Birth
                 }
                 
                 nextGrid[y][x] = newState;
@@ -981,20 +1063,21 @@
 
     // --- Drawing Engine ---
 
-    function drawGridLines() {
+    function drawGridLines(ctx, size, pixelSize) {
+        const canvasDim = size * pixelSize;
         ctx.strokeStyle = '#e0e0e0';
         ctx.lineWidth = 1;
         ctx.beginPath();
-        for (let i = 0; i <= gridSize; i++) {
+        for (let i = 0; i <= size; i++) {
             ctx.moveTo(i * pixelSize, 0);
-            ctx.lineTo(i * pixelSize, canvasSize);
+            ctx.lineTo(i * pixelSize, canvasDim);
             ctx.moveTo(0, i * pixelSize);
-            ctx.lineTo(canvasSize, i * pixelSize);
+            ctx.lineTo(canvasDim, i * pixelSize);
         }
         ctx.stroke();
     }
 
-    function drawPixel(x, y, color) {
+    function drawPixel(ctx, x, y, color, pixelSize) {
         ctx.fillStyle = color;
         const gap = 0; 
         ctx.fillRect(x * pixelSize + gap, y * pixelSize + gap, pixelSize - gap*2, pixelSize - gap*2);
@@ -1002,16 +1085,17 @@
 
     function render() {
         ctx.clearRect(0, 0, canvasSize, canvasSize);
-        drawGridLines();
+        drawGridLines(ctx, gridSize, pixelSize);
 
         for (let y = 0; y < gridSize; y++) {
             for (let x = 0; x < gridSize; x++) {
                 if (grid[y][x] === 1) {
-                    drawPixel(x, y, '#000'); 
+                    drawPixel(ctx, x, y, '#000', pixelSize); 
                 }
             }
         }
     }
+
 
     // --- Interaction ---
 
@@ -1032,11 +1116,11 @@
         if (x >= 0 && x < gridSize && y >= 0 && y < gridSize) {
             const newState = 1 - grid[y][x]; 
             if (grid[y][x] !== newState) {
-                // Save current state before toggle for the first step back (G0 state)
                 if (generation === 0 && gridHistory.length === 0) {
+                     // Save G0 state for stepBack
                      gridHistory.push(grid.map(row => [...row])); 
+                     initialPopulation = population; // Snapshot initial pop
                 }
-
                 grid[y][x] = newState;
                 render();
                 updatePopulation();
@@ -1053,11 +1137,19 @@
     });
     window.addEventListener('mouseup', () => { isDrawing = false; });
     
+    canvas.addEventListener('mousemove', (e) => {
+        if (isDrawing && !isRunning) handleToggle(e);
+    });
+
     canvas.addEventListener('touchstart', (e) => { 
         if (!isRunning) handleToggle(e); 
         isDrawing = true; 
     }, {passive: false});
     canvas.addEventListener('touchend', () => { isDrawing = false; });
+
+    canvas.addEventListener('touchmove', (e) => {
+        if (isDrawing && !isRunning) handleToggle(e);
+    }, {passive: false});
 
 
     // --- Modal Functions ---
@@ -1077,7 +1169,7 @@
     function closeModal(type) {
         if (type === 'halt') {
             haltModal.style.display = 'none';
-            document.querySelector('#haltModal .title-bar span').innerText = 'SIMULATION HALTED';
+            document.querySelector('#haltModal .title-bar span').innerText = 'SYSTEM ALERT';
         } else if (type === 'help') {
             helpModal.style.display = 'none';
         }
@@ -1157,7 +1249,7 @@
         if (isRunning) stopSimulation();
 
         if (population === 0 && generation === 0) {
-            // Using window.confirm as a fallback
+            // Note: window.confirm used here as per requirements, replace with modal if required
             const confirmed = window.confirm("The grid is empty! Start with a random pattern?");
             if (!confirmed) {
                 return;
@@ -1199,38 +1291,30 @@
     }
 
     function stepSimulation() {
-        // 1. Store current state (G_N) for history/oscillation check
         const currentGridClone = grid.map(row => [...row]); 
         
-        // 2. Calculate next state (G_N+1)
         const { nextGrid, liveCount } = calculateNextGeneration(currentGridClone);
 
-        // 3. Check for stopping condition (only if halting is enabled)
         let haltReason = null;
         if (isHaltingEnabled) {
             haltReason = checkStopConditions(currentGridClone, nextGrid, liveCount);
         }
         
-        // 4. Store the current grid BEFORE moving to the next one
         gridHistory.push(currentGridClone);
         if (gridHistory.length > maxHistory) {
             gridHistory.shift();
         }
 
-        // 5. Update global state to the next generation (G_N+1)
         grid = nextGrid;
         population = liveCount;
         generation++;
 
-        // 6. Record data for graph (P_N+1)
         populationHistory.push({ generation: generation, population: population });
 
-        // 7. Render and update UI/Graph
         render();
         updateUI();
         updateGraph();
 
-        // 8. Halt if a reason was found
         if (haltReason) {
             stopSimulation();
             showHaltModal(haltReason);
@@ -1242,26 +1326,24 @@
         if (isRunning) stopSimulation();
         
         if (generation > 0) { 
-            // 1. Roll back the generation count
             generation--; 
-
-            // 2. Remove the data point for the state we are currently viewing (G_N)
             populationHistory.pop();
 
-            // 3. Get the previous grid state (G_N-1) from history
             if (gridHistory.length > 0) {
-                // The last state saved in history is the one we want to render now (G_N-1)
                 grid = gridHistory.pop(); 
             } else {
-                 // Should only happen if rolling from G1 to G0
                  grid = createNewGrid(gridSize);
             }
 
-            // 4. Update UI/Graph
             updatePopulation(); 
             render();
             updateUI();
             updateGraph(); 
+            
+            // Re-snapshot initial population if rolling back to G0
+            if (generation === 0) {
+                initialPopulation = population;
+            }
         }
     }
 
@@ -1295,6 +1377,13 @@
         stepBtn.disabled = isRunning;
         stepBackBtn.disabled = isRunning || generation === 0;
         document.getElementById('pattern-selector').disabled = isRunning;
+        
+        // Ensure START buttons are visible when stopped, RUN FOREVER is always available.
+        if (!isRunning) {
+             runHaltingBtn.style.display = 'inline-block';
+             runForeverBtn.style.display = 'inline-block';
+             stopBtn.style.display = 'none';
+        }
     }
 
     // --- Start ---
@@ -1305,4 +1394,3 @@
 
 </body>
 </html>
-
