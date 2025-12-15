@@ -88,73 +88,98 @@
             cursor: pointer;
         }
 
+        /* --- New Menu Bar Styles --- */
+        .menu-bar {
+            display: flex;
+            background: var(--sys-grey);
+            border-bottom: 2px solid var(--sys-black);
+            font-size: 1.1rem;
+            padding: 2px 0;
+            z-index: 10;
+            flex-wrap: wrap;
+        }
+
+        .menu-item {
+            position: relative;
+            padding: 2px 10px;
+            cursor: pointer;
+            border-right: 1px solid var(--sys-black);
+            white-space: nowrap;
+        }
+        
+        .menu-item:hover {
+            background: var(--sys-black);
+            color: var(--sys-white);
+        }
+
+        .dropdown-content {
+            display: none;
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: var(--sys-white);
+            border: 2px solid var(--sys-black);
+            box-shadow: 4px 4px 0px rgba(0,0,0,0.2);
+            padding: 5px;
+            min-width: 150px;
+            z-index: 100;
+            flex-direction: column;
+            gap: 5px;
+        }
+
+        .menu-item:hover .dropdown-content {
+            display: flex;
+        }
+        
+        /* Dropdown Buttons/Controls */
+        .dropdown-content button, .dropdown-content select, .dropdown-content label {
+            width: 100%;
+            text-align: left;
+            background: var(--sys-white);
+            border: none;
+            padding: 5px;
+            font-family: 'VT323', monospace;
+            font-size: 1rem;
+            cursor: pointer;
+            box-shadow: none;
+            transition: background 0.1s;
+            color: var(--sys-black);
+            border: 1px solid transparent;
+        }
+        .dropdown-content button:hover, .dropdown-content select:focus {
+            background: var(--sys-black);
+            color: var(--sys-white);
+        }
+        .dropdown-content button:active {
+            transform: none;
+            box-shadow: none;
+        }
+        .dropdown-content select {
+            border: 1px solid var(--sys-black);
+            box-sizing: border-box;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+        }
+        .dropdown-content label {
+            padding: 0 5px;
+            font-weight: bold;
+        }
+        
+        .menu-divider {
+            height: 1px;
+            background: var(--sys-black);
+            margin: 5px 0;
+            width: 100%;
+        }
+
+
         /* Main Content Area */
         .content {
             padding: 10px;
             display: flex;
             flex-direction: column;
             gap: 10px;
-        }
-
-        /* Toolbar / Control Groups */
-        .toolbar {
-            display: flex;
-            gap: 5px;
-            flex-wrap: wrap;
-            justify-content: space-around;
-            padding-bottom: 5px;
-            border-bottom: 1px dashed var(--sys-black);
-        }
-
-        .btn {
-            background: var(--sys-white);
-            border: 2px solid var(--sys-black);
-            padding: 5px 10px;
-            font-family: 'VT323', monospace;
-            font-size: 1rem;
-            cursor: pointer;
-            box-shadow: 2px 2px 0px var(--sys-black);
-            transition: transform 0.1s;
-            text-transform: uppercase;
-            text-decoration: none;
-            color: var(--sys-black);
-            display: inline-block;
-            text-align: center;
-        }
-
-        .btn:active {
-            transform: translate(2px, 2px);
-            box-shadow: none;
-            background: var(--sys-black);
-            color: var(--sys-white);
-        }
-
-        .btn.active {
-            background: var(--sys-black);
-            color: var(--sys-white);
-            box-shadow: inset 2px 2px 0px rgba(255,255,255,0.2);
-        }
-
-        .btn:disabled {
-            color: #aaa;
-            border-color: #aaa;
-            box-shadow: none;
-            cursor: default;
-        }
-
-        .control-group {
-            display: flex;
-            gap: 5px;
-            align-items: center;
-            border: 1px solid var(--sys-black);
-            padding: 3px;
-            flex-wrap: wrap; 
-            justify-content: center;
-        }
-
-        .control-group-title {
-            font-size: 0.8rem;
-            font-weight: bold;
         }
 
         /* Canvas Area */
@@ -185,15 +210,48 @@
         /* Simulation Controls */
         .simulation-controls {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 5px 0;
+            flex-direction: column;
+            gap: 5px;
+        }
+        
+        .control-group-row {
+            display: flex;
+            gap: 5px;
             flex-wrap: wrap;
         }
 
-        .sim-control-buttons {
-            display: flex;
-            gap: 5px;
+        .btn {
+            background: var(--sys-white);
+            border: 2px solid var(--sys-black);
+            padding: 5px 10px;
+            font-family: 'VT323', monospace;
+            font-size: 1rem;
+            cursor: pointer;
+            box-shadow: 2px 2px 0px var(--sys-black);
+            transition: transform 0.1s;
+            text-transform: uppercase;
+            text-decoration: none;
+            color: var(--sys-black);
+            display: inline-block;
+            text-align: center;
+        }
+
+        .btn:active {
+            transform: translate(2px, 2px);
+            box-shadow: none;
+            background: var(--sys-black);
+            color: var(--sys-white);
+        }
+
+        .btn:disabled {
+            color: #aaa;
+            border-color: #aaa;
+            box-shadow: none;
+            cursor: default;
+        }
+        
+        .speed-control-container {
+            align-items: center;
         }
 
         label {
@@ -317,8 +375,8 @@
         @media (max-width: 500px) {
             body { padding: 5px; }
             .btn { font-size: 0.9rem; padding: 4px 6px; }
-            .control-group { flex-wrap: wrap; justify-content: center;}
-            .simulation-controls { justify-content: center; gap: 10px;}
+            .control-group-row { justify-content: center;}
+            .menu-bar { justify-content: center; }
         }
     </style>
 </head>
@@ -331,28 +389,56 @@
         <span>CELL.LIFE</span>
         <div class="title-lines"></div>
     </div>
-
-    <div class="content">
-        <!-- Setup Controls -->
-        <div class="toolbar">
-            <div class="control-group">
-                <span class="control-group-title">SETUP:</span>
-                <button class="btn" onclick="clearGrid()">Clear All</button>
-                <button class="btn" onclick="randomizeGrid()">Random</button>
-            </div>
-            
-            <div class="control-group">
-                <span class="control-group-title">GRID & HELP:</span>
-                <select id="grid-size" class="btn" onchange="changeGridSize()">
+    
+    <!-- NEW MENU BAR -->
+    <nav class="menu-bar">
+        <div class="menu-item">FILE
+            <div class="dropdown-content">
+                <button onclick="resetSimulation()">[?] Reset All</button>
+                <button onclick="showHelpModal()">[?] Help/Rules</button>
+                <div class="menu-divider"></div>
+                <label for="grid-size">Grid Size:</label>
+                <select id="grid-size" onchange="changeGridSize()">
                     <option value="16">16x16</option>
                     <option value="32">32x32</option>
                     <option value="64">64x64</option>
                 </select>
-                <button class="btn" onclick="showHelpModal()">[?] HELP</button>
-                <button class="btn" onclick="resetSimulation()" style="color:red; font-weight:bold;">RESET</button>
             </div>
         </div>
+        
+        <div class="menu-item">EDIT
+            <div class="dropdown-content">
+                <button onclick="clearGrid()">Clear Grid</button>
+                <button onclick="randomizeGrid()">Randomize</button>
+            </div>
+        </div>
+        
+        <div class="menu-item">PATTERNS
+            <div class="dropdown-content">
+                <select id="pattern-selector" onchange="loadSelectedPattern()">
+                    <option value="">-- Load a Pattern --</option>
+                    <optgroup label="Still Lifes (Stable)">
+                        <option value="block">Block</option>
+                        <option value="beehive">Beehive</option>
+                        <option value="boat">Boat</option>
+                    </optgroup>
+                    <optgroup label="Oscillators (Repeating)">
+                        <option value="blinker">Blinker</option>
+                        <option value="toad">Toad</option>
+                        <option value="pulsar">Pulsar (Needs 32x32+)</option>
+                    </optgroup>
+                    <optgroup label="Spaceships (Moving)">
+                        <option value="glider">Glider (The Classic)</option>
+                        <option value="lwss">Lightweight Spaceship</option>
+                    </optgroup>
+                </select>
+            </div>
+        </div>
+    </nav>
+    <!-- END MENU BAR -->
 
+
+    <div class="content">
         <!-- Main Canvas -->
         <div class="canvas-container">
             <canvas id="editorCanvas" width="320" height="320"></canvas>
@@ -360,13 +446,19 @@
 
         <!-- Simulation Controls -->
         <div class="simulation-controls">
-            <div class="sim-control-buttons">
-                <button class="btn" id="play-btn" onclick="toggleSimulation()">&#9658; START</button>
+            <div class="control-group-row">
+                <!-- Buttons for the two running modes. Start(true) halts, Start(false) runs forever -->
+                <button class="btn" id="run-halting-btn" onclick="startSimulation(true)">&#9658; START (One Run)</button>
+                <button class="btn" id="run-forever-btn" onclick="startSimulation(false)">&#9658; RUN FOREVER</button>
+                <button class="btn" id="stop-btn" onclick="stopSimulation()" style="display:none; background: #d90429; color: white; font-weight:bold;">&#9632; STOP</button>
+            </div>
+            
+            <div class="control-group-row">
                 <button class="btn" id="step-btn" onclick="stepSimulation()">STEP</button>
-                <!-- Added Step Back Button -->
                 <button class="btn" id="step-back-btn" onclick="stepBack()" disabled>&lt; BACK</button> 
             </div>
-            <div style="display:flex; align-items:center; gap:5px;">
+
+            <div class="control-group-row speed-control-container">
                 <label>Speed:</label>
                 <!-- Range is 1 (Slow) to 20 (Fast) -->
                 <input type="range" id="speed-range" min="1" max="20" value="8" oninput="updateSpeed()">
@@ -439,6 +531,7 @@
     const maxHistory = 10; // Only store the last N generations for oscillation check and step back
     
     let isRunning = false;
+    let isHaltingEnabled = true; // NEW: Controls whether stop conditions are checked
     let runInterval = null;
     let fps = 8; // Frames (Generations) per second
     let isDrawing = false; // For mouse/touch interaction
@@ -446,7 +539,9 @@
     // --- DOM Elements ---
     const canvas = document.getElementById('editorCanvas');
     const ctx = canvas.getContext('2d');
-    const playBtn = document.getElementById('play-btn');
+    const runHaltingBtn = document.getElementById('run-halting-btn');
+    const runForeverBtn = document.getElementById('run-forever-btn');
+    const stopBtn = document.getElementById('stop-btn');
     const stepBtn = document.getElementById('step-btn');
     const stepBackBtn = document.getElementById('step-back-btn');
     const genIndicator = document.getElementById('generation-indicator');
@@ -462,6 +557,40 @@
     const helpModal = document.getElementById('helpModal');
     const rulesContainer = document.getElementById('rules-container');
     
+    // --- Pattern Definitions ---
+    // Patterns are defined as a list of relative (x, y) coordinates for live cells, 
+    // where (0, 0) is the top-left corner of the pattern's bounding box.
+    const PATTERNS = {
+        // Still Lifes (Stable)
+        block: [[0, 0], [1, 0], [0, 1], [1, 1]], // 2x2
+        beehive: [[1, 0], [2, 0], [0, 1], [3, 1], [1, 2], [2, 2]], // 4x3
+        boat: [[0, 0], [1, 0], [0, 1], [2, 1], [1, 2]], // 3x3
+        
+        // Oscillators (Repeating)
+        blinker: [[0, 1], [1, 1], [2, 1]], // 3x1 (period 2)
+        toad: [[1, 0], [2, 0], [3, 0], [0, 1], [1, 1], [2, 1]], // 4x2 (period 2)
+        pulsar: [ // 13x13 (period 3) - needs space
+            [2, 0], [3, 0], [4, 0], [8, 0], [9, 0], [10, 0],
+            [0, 2], [5, 2], [7, 2], [12, 2],
+            [0, 3], [5, 3], [7, 3], [12, 3],
+            [0, 4], [5, 4], [7, 4], [12, 4],
+            [2, 5], [3, 5], [4, 5], [8, 5], [9, 5], [10, 5],
+            [2, 7], [3, 7], [4, 7], [8, 7], [9, 7], [10, 7],
+            [0, 8], [5, 8], [7, 8], [12, 8],
+            [0, 9], [5, 9], [7, 9], [12, 9],
+            [0, 10], [5, 10], [7, 10], [12, 10],
+            [2, 12], [3, 12], [4, 12], [8, 12], [9, 12], [10, 12]
+        ],
+        
+        // Spaceships (Moving)
+        glider: [[1, 0], [2, 1], [0, 2], [1, 2], [2, 2]], // 3x3
+        lwss: [ // Lightweight Spaceship (LWSS) 5x4
+            [1, 0], [4, 0],
+            [0, 1], [0, 2], [4, 2],
+            [0, 3], [1, 3], [2, 3], [3, 3]
+        ]
+    };
+
     // --- Initialization ---
     function init() {
         // Ensure grid settings match current dropdown (default 16x16)
@@ -500,6 +629,7 @@
         gridHistory = []; // Reset history
         render();
         updateUI();
+        document.getElementById('pattern-selector').value = ""; // Reset pattern selector
     }
 
     /** Clears the grid (same as reset, but without stopping simulation if already stopped). */
@@ -510,6 +640,7 @@
         gridHistory = []; // Reset history
         render();
         updateUI();
+        document.getElementById('pattern-selector').value = "";
     }
 
     /** Fills the grid with random living/dead cells. */
@@ -530,6 +661,7 @@
         updatePopulation(); // Recalculate population after randomization
         render();
         updateUI();
+        document.getElementById('pattern-selector').value = "";
     }
 
     /** Changes grid size and resets the simulation completely. */
@@ -538,9 +670,10 @@
         const newSize = parseInt(select.value);
         
         if (population > 0 || generation > 0) {
-            // Replaced alert with custom function
-            if(!confirm("Changing grid size will reset the current pattern and generation count. Continue?")) {
-                select.value = gridSize; // Revert selection
+            // Revert selection if user cancels confirmation
+            const confirmed = confirm("Changing grid size will reset the current pattern and generation count. Continue?");
+            if (!confirmed) {
+                select.value = gridSize; 
                 return;
             }
         }
@@ -549,6 +682,64 @@
         pixelSize = canvasSize / gridSize;
         resetSimulation();
     }
+
+    /** Loads a pattern onto the grid. */
+    function loadSelectedPattern() {
+        const selector = document.getElementById('pattern-selector');
+        const patternKey = selector.value;
+
+        if (!patternKey || !PATTERNS[patternKey]) return;
+
+        // Stop simulation and clear grid before loading new pattern
+        if (isRunning) stopSimulation();
+        clearGrid();
+
+        const pattern = PATTERNS[patternKey];
+        
+        // Find bounding box to center the pattern
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        pattern.forEach(([x, y]) => {
+            minX = Math.min(minX, x);
+            minY = Math.min(minY, y);
+            maxX = Math.max(maxX, x);
+            maxY = Math.max(maxY, y);
+        });
+
+        const patternWidth = maxX - minX + 1;
+        const patternHeight = maxY - minY + 1;
+        
+        // Check if pattern fits
+        if (patternWidth > gridSize || patternHeight > gridSize) {
+             // Reset selector value
+             selector.value = "";
+             // Use custom modal instead of alert for better UI
+             showHaltModal(`Pattern "${patternKey}" is too large for the current ${gridSize}x${gridSize} grid. Try switching to 32x32 or 64x64.`, 'Pattern Load Error');
+             return;
+        }
+
+        // Calculate offset to center the pattern
+        const offsetX = Math.floor((gridSize - patternWidth) / 2) - minX;
+        const offsetY = Math.floor((gridSize - patternHeight) / 2) - minY;
+
+        // Apply pattern
+        // We ensure grid is a fresh start before applying the pattern
+        grid = createNewGrid(gridSize);
+        pattern.forEach(([x, y]) => {
+            const finalX = x + offsetX;
+            const finalY = y + offsetY;
+            if (finalX >= 0 && finalX < gridSize && finalY >= 0 && finalY < gridSize) {
+                 grid[finalY][finalX] = 1;
+            }
+        });
+
+        // Set initial state for stepBack
+        gridHistory.push(grid.map(row => [...row])); 
+        generation = 0;
+        updatePopulation();
+        render();
+        updateUI();
+    }
+
 
     // --- Conway's Game of Life Core Logic ---
     
@@ -604,7 +795,7 @@
         const totalCells = gridSize * gridSize;
         let reason = null;
 
-        // 3. Extinction/Overgrowth (Kid-friendly language)
+        // 3. Extinction/Overgrowth
         if (liveCount === 0) {
             reason = "EMPTY! All the cells died. No life left on the grid.";
         } else if (liveCount === totalCells) {
@@ -614,12 +805,12 @@
         const currentGridString = JSON.stringify(currentGrid);
         const nextGridString = JSON.stringify(nextGrid);
         
-        // 1. Stability (Current grid equals Next grid - Kid-friendly language)
+        // 1. Stability 
         if (!reason && currentGridString === nextGridString) {
             reason = "STABLE! The pattern is perfectly still and won't change.";
         }
         
-        // 2. Oscillation (Next grid equals a recent previous grid in history - Kid-friendly language)
+        // 2. Oscillation 
         if (!reason) {
             for (let i = 0; i < gridHistory.length; i++) {
                 if (nextGridString === JSON.stringify(gridHistory[i])) {
@@ -676,6 +867,7 @@
     /** Converts mouse/touch coordinates to grid coordinates. */
     function getGridCoords(e) {
         const rect = canvas.getBoundingClientRect();
+        // Use offset from touch or mouse event
         const clientX = e.touches ? e.touches[0].clientX : e.clientX;
         const clientY = e.touches ? e.touches[0].clientY : e.clientY;
         
@@ -722,7 +914,11 @@
 
     // --- Modal Functions (Shared) ---
 
-    function showHaltModal(reason) {
+    /** Shows the halt modal with a specific message. */
+    function showHaltModal(reason, title = 'SIMULATION HALTED') {
+        // Update the modal title bar (using JS for simplicity over separate modal components)
+        document.querySelector('#haltModal .title-bar span').innerText = title;
+        
         modalHaltReason.innerText = reason;
         modalHaltGen.innerText = generation;
         modalHaltPop.innerText = population;
@@ -736,6 +932,8 @@
     function closeModal(type) {
         if (type === 'halt') {
             haltModal.style.display = 'none';
+            // Restore default title bar text
+            document.querySelector('#haltModal .title-bar span').innerText = 'SIMULATION HALTED';
         } else if (type === 'help') {
             helpModal.style.display = 'none';
         }
@@ -743,13 +941,7 @@
 
     // --- Help Modal Rule Visuals ---
 
-    /** Generates the HTML for a single rule visual grid.
-     * @param {Array<number>} neighborPattern - 8 items representing neighbors (0 or 1). Top-left clockwise.
-     * @param {number} centerState - 0 (Dead) or 1 (Alive).
-     * @param {string} ruleTitle - Title of the rule.
-     * @param {string} ruleText - Kid-friendly explanation.
-     * @param {string} resultText - The result of the rule.
-     */
+    /** Creates the HTML for a rule visual (same as before) */
     function createRuleVisual(neighborPattern, centerState, ruleTitle, ruleText, resultText) {
         const pattern = [
             neighborPattern[0], neighborPattern[1], neighborPattern[2],
@@ -832,27 +1024,35 @@
 
     // --- Simulation Controls ---
 
-    /** Toggles the continuous simulation loop. */
-    function toggleSimulation() {
+    /** * Starts the continuous simulation loop. 
+     * @param {boolean} shouldHalt - If true, checks for stability/oscillation and halts. If false, runs forever.
+     */
+    function startSimulation(shouldHalt) {
         if (isRunning) stopSimulation();
-        else startSimulation();
-    }
 
-    /** Starts the continuous simulation loop. */
-    function startSimulation() {
+        // Check for empty grid logic...
         if (population === 0 && generation === 0) {
-            if (gridSize > 0 && !confirm("The grid is empty! Start with a random pattern?")) {
+            const confirmed = confirm("The grid is empty! Start with a random pattern?");
+            if (!confirmed) {
                 return;
             }
             randomizeGrid();
         }
 
+        isHaltingEnabled = shouldHalt;
         isRunning = true;
-        playBtn.innerHTML = '&#9632; STOP';
+        
+        // UI updates for running state
+        runHaltingBtn.style.display = 'none';
+        runForeverBtn.style.display = 'none';
+        stopBtn.style.display = 'inline-block';
+        
         stepBtn.disabled = true;
         stepBackBtn.disabled = true;
         canvas.style.cursor = 'default';
         document.getElementById('grid-size').disabled = true;
+        document.getElementById('pattern-selector').disabled = true;
+
 
         runInterval = setInterval(() => {
             stepSimulation();
@@ -863,10 +1063,17 @@
     function stopSimulation() {
         isRunning = false;
         clearInterval(runInterval);
-        playBtn.innerHTML = '&#9658; START';
+        
+        // UI updates for stopped state
+        runHaltingBtn.style.display = 'inline-block';
+        runForeverBtn.style.display = 'inline-block';
+        stopBtn.style.display = 'none';
+
         stepBtn.disabled = false;
         canvas.style.cursor = 'crosshair';
         document.getElementById('grid-size').disabled = false;
+        document.getElementById('pattern-selector').disabled = false;
+        updateUI(); // To update the stepBack button state
     }
 
     /** Executes one generation step. */
@@ -877,8 +1084,11 @@
         // 2. Calculate next state
         const { nextGrid, liveCount } = calculateNextGeneration(currentGridClone);
 
-        // 3. Check for stopping condition against the new state
-        const haltReason = checkStopConditions(currentGridClone, nextGrid, liveCount);
+        // 3. Check for stopping condition against the new state (only if halting is enabled)
+        let haltReason = null;
+        if (isHaltingEnabled) {
+            haltReason = checkStopConditions(currentGridClone, nextGrid, liveCount);
+        }
         
         // 4. Store the current grid BEFORE moving to the next one
         gridHistory.push(currentGridClone);
@@ -913,8 +1123,7 @@
             render();
             updateUI();
         } else if (gridHistory.length === 1) {
-             grid = gridHistory[0];
-             gridHistory = []; 
+             grid = gridHistory.pop(); // Pop the last state (Gen 0)
              generation = 0;
              updatePopulation();
              render();
@@ -928,8 +1137,10 @@
         const slider = document.getElementById('speed-range');
         fps = parseInt(slider.value);
         if (isRunning) {
+            // Stop and restart to apply new speed without halting check changing
+            const wasHalting = isHaltingEnabled;
             stopSimulation();
-            startSimulation(); // Restart with new speed
+            startSimulation(wasHalting); 
         }
     }
 
@@ -951,11 +1162,10 @@
         genIndicator.innerText = generation;
         popIndicator.innerText = population;
 
-        // Enable/Disable step button based on running state
+        // Step and Step Back controls should only be enabled when not running.
         stepBtn.disabled = isRunning;
-        
-        // Enable/Disable step back button based on history size
-        stepBackBtn.disabled = isRunning || gridHistory.length <= 1;
+        stepBackBtn.disabled = isRunning || gridHistory.length === 0;
+        document.getElementById('pattern-selector').disabled = isRunning;
     }
 
     // --- Start ---
@@ -966,3 +1176,4 @@
 
 </body>
 </html>
+
